@@ -4,6 +4,7 @@
 
 */
 
+#[derive(Clone)]
 pub struct mem {
     mem: [u8; 65536],
 }
