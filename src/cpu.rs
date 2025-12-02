@@ -285,6 +285,78 @@ impl CPU {
     }
 
 
+    fn op_sub(&mut self, mode: u16, reg: u16) {
+        match mode {
+            0_u16 => {
+                // r2 to r1
+                // dest src
+                
+                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                *r1 = *r1 - r2;
+                self.increment_pc(2); // increment by # of bytes in instruction
+            },
+            0b0001_u16 => {
+                // m2 to r1
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m21 = self.regs[get_bits_lsb(reg, 0, 2) as usize]; // so will add 1 to reg
+                let m22 = self.regs[(get_bits_lsb(reg, 0, 2) + 1) as usize];
+
+                let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
+
+                println!("regs: {:016b}", reg);
+
+                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                println!("m2: {}", m2);
+
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                *r1 = *r1 - self.mem.get(m2);
+                
+                self.increment_pc(2);
+
+            },
+            0b0011_u16 => {
+                // println!("Moving");
+                // i2 to r1
+                // dest src
+
+                let i2 = self.get_operand(); // 1 byte; got operand, so adds 1 byte to full instruction
+                // println!("{}", i2);
+                // println!("reg: {:016b}", reg);
+                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+
+                *r1 = *r1 - i2;
+
+
+                self.increment_pc(3); // uses operand -> 3 bytes
+            },
+            0b0100_u16 => {
+                // i2 to m1
+                // dest src
+
+                let i2 = self.get_operand(); // 1 byte; got operand, so adds 1 byte to full instruction
+                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m1 = (m11 as u16) << 8 | (m12 as u16);
+
+                let m1val = self.mem.get(m1);
+
+                self.mem.set(m1, m1val - i2);
+
+                self.increment_pc(3);
+
+            },
+            _ => println!("Not accounted for"),
+        }
+    }
+
+
 
     pub fn step(&mut self) -> bool { // 1 for did something, 0 for did nothing
         // println!("ins{:016b}", self.mem.get(self.pc));
@@ -306,8 +378,9 @@ impl CPU {
 
         return match opcode {
             0_u16 => false, // do nothing
-            0b000001_u16 => {self.op_move(mode, reg); return true;},
-            0b000010_u16 => {self.op_add(mode, reg); return true;},
+            0b000001_u16 => {self.op_move(mode, reg); return true;}, // MOVE
+            0b000010_u16 => {self.op_add(mode, reg); return true;}, // ADD
+            0b000011_u16 => {self.op_sub(mode, reg); return true;}, // SUB
             _ => {println!("Unaccounted-for operation"); return false;},
         }
         
