@@ -2,12 +2,12 @@ mod cpu;
 mod memory;
 
 use cpu::CPU;
-use memory::mem;
+use memory::Mem;
 
 
 
 fn main() {
-    let mut memory = mem::new();
+    let mut memory = Mem::new();
 
     memory.set(0x00, 0b0000_0100_u8); // move command, no modes so far
     memory.set(0x01, 0b1101_0000_u8); // moving i2 -> r1

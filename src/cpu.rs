@@ -77,7 +77,7 @@ register: 000 001 -> R1 to R0
 
 
 */
-use crate::memory::mem;
+use crate::memory::Mem;
 
 
 
@@ -95,7 +95,7 @@ pub struct CPU {
     flags: Flags,
     pc: u16,
     sp: u16,
-    mem: mem,
+    mem: Mem,
 
 
 }
@@ -122,7 +122,7 @@ fn get_bits_lsb(number: u16, idx1: u8, idx2: u8) -> u16 {
 }
 
 impl CPU {
-    pub fn new(mem: mem) -> Self {
+    pub fn new(mem: Mem) -> Self {
         let flags = Flags {carry: false, sign: false, zero: false, overflow: false,};
 
         Self {

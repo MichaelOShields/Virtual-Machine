@@ -5,13 +5,14 @@
 */
 
 #[derive(Clone)]
-pub struct mem {
+#[allow(dead_code)]
+pub struct Mem {
     mem: [u8; 65536],
 }
 
 
 
-impl mem {
+impl Mem {
     pub fn new() -> Self {
 
 
