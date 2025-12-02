@@ -247,7 +247,6 @@ impl CPU {
 
             },
             0b0011_u16 => {
-                // println!("Moving");
                 // i2 to r1
                 // dest src
 
@@ -301,7 +300,7 @@ impl CPU {
                 // m2 to r1
 
                 // mem loc stored as r0:r1 or r1:r2 etc
-                let m21 = self.regs[get_bits_lsb(reg, 0, 2) as usize]; // so will add 1 to reg
+                let m21 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
                 let m22 = self.regs[(get_bits_lsb(reg, 0, 2) + 1) as usize];
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
@@ -319,13 +318,10 @@ impl CPU {
 
             },
             0b0011_u16 => {
-                // println!("Moving");
                 // i2 to r1
                 // dest src
 
                 let i2 = self.get_operand(); // 1 byte; got operand, so adds 1 byte to full instruction
-                // println!("{}", i2);
-                // println!("reg: {:016b}", reg);
                 println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -359,7 +355,6 @@ impl CPU {
 
 
     pub fn step(&mut self) -> bool { // 1 for did something, 0 for did nothing
-        // println!("ins{:016b}", self.mem.get(self.pc));
         let instruction: u16 =
         (self.mem.get(self.pc) as u16) << 8
         | ((self.mem.get(self.pc + 1) as u16));
@@ -367,13 +362,6 @@ impl CPU {
         let opcode = get_bits_msb(instruction, 0, 5);
         let mode = get_bits_msb(instruction, 6, 9);
         let reg = get_bits_msb(instruction, 10, 15);
-        // println!("reg: {:08b}", reg);
-
-        // println!("instruction: {:016b}", instruction);
-        // println!("test: {:016b}", self.mem.get(self.pc));
-        // println!("opcode = {:016b}", opcode);
-        // println!("mode   = {:016b}", mode);
-        // println!("reg    = {:016b}", reg);
 
 
         return match opcode {

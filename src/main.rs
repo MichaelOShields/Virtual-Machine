@@ -30,12 +30,13 @@ fn main() {
     memory.set(0x09, 0b1100_0000_u8);
     memory.set(0x0A, 0b0010_0001_u8);
 
-    memory.set(0x0B, 0b0000_1000);
-    memory.set(0x0C, 0b0010_0011);
 
-    // println!("{:08b}", memory.get(0));
-    // println!("{:08b}", memory.get(1));
-    // println!("{:08b}", memory.get(2));
+    memory.set(0x0B, 0b0000_1000_u8);
+    memory.set(0x0C, 0b0010_0011_u8);
+
+    memory.set(0x0D, 0b0000_1100_u8);
+    memory.set(0x0E, 0b0010_0000_u8);
+
 
     let mut cpu = CPU::new(memory);
 
