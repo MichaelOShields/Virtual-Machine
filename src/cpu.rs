@@ -101,12 +101,15 @@ pub struct CPU {
 }
 
 fn get_bits(number: u16, idx1: u8, idx2: u8) -> u16 {
-    let low = idx1.min(idx2);
-    let high = idx1.max(idx2);
+    let msb_low = idx1.min(idx2);
+    let msb_high = idx1.max(idx2);
 
-    let width = high - low + 1;
+    let lsb_low  = 15 - msb_high;
+    let lsb_high = 15 - msb_low;
 
-    (number >> low) & ((1 << width) - 1)
+    let width = lsb_high - lsb_low + 1;
+
+    (number >> lsb_low) & ((1 << width) - 1)
 }
 
 impl CPU {
@@ -163,13 +166,25 @@ impl CPU {
 
 
     pub fn step(&mut self) {
-        let instruction: u16 = (((self.mem.get(self.pc) as u16) << 8)) | (self.mem.get(self.pc + 1) as u16);
+        println!("ins{:016b}", self.mem.get(self.pc));
+        let instruction: u16 =
+        (self.mem.get(self.pc) as u16) << 8
+        | ((self.mem.get(self.pc + 1) as u16));
+
         let opcode = get_bits(instruction, 0, 5);
         let mode = get_bits(instruction, 6, 9);
         let reg = get_bits(instruction, 10, 15);
 
+        // println!("instruction: {:016b}", instruction);
+        // println!("test: {:016b}", self.mem.get(self.pc));
+        // println!("opcode = {:016b}", opcode);
+        // println!("mode   = {:016b}", mode);
+        // println!("reg    = {:016b}", reg);
+
+
         match opcode {
-            0_u16 => self.op_move(mode, reg),
+            0_u16 => println!("nothing"), // do nothing
+            0b0000_0001_u16 => self.op_move(mode, reg),
             _ => println!("Unaccounted-for operation"),
         }
         
