@@ -38,6 +38,9 @@ fn main() {
     memory.set(0x0E, 0b0010_0000_u8);
 
 
+    memory.set(0x0F, 0b1111_1100_u8);
+
+
     let mut cpu = CPU::new(memory);
 
     let mut cpu_running = true;
@@ -46,6 +49,6 @@ fn main() {
         cpu_running = cpu.step();
         cpu.status();
     }
-    println!("CPU stopped")
+    println!("CPU halted")
 
 }

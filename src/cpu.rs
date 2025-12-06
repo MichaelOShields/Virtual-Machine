@@ -132,7 +132,6 @@ impl CPU {
             sp: 65535,
             mem: mem,
         }
-
     }
 
     fn increment_pc(&mut self, incs: u8) {
@@ -141,6 +140,17 @@ impl CPU {
 
     fn get_operand(&mut self) -> u8 {
         return self.mem.get(self.pc + 0x02);
+    }
+
+    fn push(&mut self, val: u8) {
+        self.sp -= 1;
+        self.mem.set(self.sp, val);
+    }
+
+    fn pop(&mut self) -> u8 {
+        let v = self.mem.get(self.sp);
+        self.sp += 1;
+        return v;
     }
 
     fn op_move(&mut self, mode: u16, reg: u16) {
@@ -269,7 +279,6 @@ impl CPU {
         self.flags.zero = set_zero;
         self.flags.sign = set_sign;
         self.flags.overflow = set_over;
-
     }
 
 
@@ -1118,6 +1127,396 @@ impl CPU {
         }
     }
 
+    fn single_val(&mut self, mode: u16, reg: u16) -> u8 {
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r = self.regs[get_bits_lsb(reg, 3, 5) as usize].clone();
+
+                self.increment_pc(2);
+                return r;
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                self.increment_pc(2);
+
+                return self.mem.get(m);
+
+            },
+            0b0010_u16 => {
+                // i
+                let i = self.get_operand();
+
+                self.increment_pc(3);
+
+                return i;
+
+            },
+            _ => 0b0000_0000_u8,
+        }
+    }
+
+
+    fn op_j(&mut self, mode: u16, reg: u16) {
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let r12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (r11 as u16) << 8 | (r12 as u16);
+
+                self.pc = m;
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                self.pc = (self.mem.get(m) as u16) << 8 | (self.mem.get(m + 1) as u16);
+
+            },
+            0b0010_u16 => {
+                // i
+                let i1 = self.get_operand();
+                self.increment_pc(1);
+                let i2 = self.get_operand();
+
+                let i = (i1 as u16) << 8 | (i2 as u16);
+
+                self.pc = i;
+            },
+            _ => println!("Not accounted for"),
+        }
+    }
+
+
+    fn jump_cond(&mut self, mode: u16, reg: u16, boolean: bool) {
+        if boolean {
+            self.op_j(mode, reg);
+        }
+        else {
+            match mode {
+                0b0000_u16 => {
+                    // r
+                    self.increment_pc(2);
+                },
+                0b0001_u16 => {
+                    // m
+                    self.increment_pc(2);
+
+                },
+                0b0010_u16 => {
+                    // i
+                    self.increment_pc(4); // jumping code doesn't run so must compensate
+                },
+                _ => println!("Not accounted for")
+            }
+        }
+    }
+
+
+    fn op_jz(&mut self, mode: u16, reg: u16) {
+        self.jump_cond(mode, reg, self.flags.zero);
+    }
+
+    fn op_jc(&mut self, mode: u16, reg: u16) {
+        self.jump_cond(mode, reg, self.flags.carry);
+    }
+
+    fn op_jo(&mut self, mode: u16, reg: u16) {
+        self.jump_cond(mode, reg, self.flags.overflow);
+    }
+
+    fn op_js(&mut self, mode: u16, reg: u16) {
+        self.jump_cond(mode, reg, self.flags.sign);
+    }
+    fn op_jnz(&mut self, mode: u16, reg: u16) {
+        self.jump_cond(mode, reg, !self.flags.zero);
+    }
+
+    fn op_jg(&mut self, mode: u16, reg: u16) {
+        self.jump_cond(mode, reg, !self.flags.zero && !self.flags.sign);
+    }
+
+    fn op_jl(&mut self, mode: u16, reg: u16) {
+        self.op_js(mode, reg);
+    }
+
+
+    fn op_comp(&mut self, mode: u16, reg: u16) {
+        match mode {
+            0b0000_u16 => {
+                // r2 to r1
+                // dest src
+                
+                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                let a = (*r1).clone();
+                let b = r2;
+
+                let (result, borrow) = a.overflowing_sub(b);
+
+                self.signs_sub(a, b, result, borrow);
+
+                self.increment_pc(2); // increment by # of bytes in instruction
+            },
+            0b0001_u16 => {
+                // m2 to r1
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m21 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
+                let m22 = self.regs[(get_bits_lsb(reg, 0, 2) + 1) as usize];
+
+                let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
+
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                let a = (*r1).clone();
+                let b = self.mem.get(m2);
+
+                let (result, borrow) = a.overflowing_sub(b);
+
+                self.signs_sub(a, b, result, borrow);
+                
+                self.increment_pc(2);
+
+            },
+            0b0010_u16 => {
+                // r2 to m1
+                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize]; // so will add 1 to reg
+                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
+                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
+
+                let a = self.mem.get(m1);
+                let b = r2;
+
+                let (result, borrow) = a.overflowing_sub(b);
+
+                self.signs_sub(a,b, result, borrow);
+                
+                self.increment_pc(2);
+
+            },
+            0b0011_u16 => {
+                // i2 to r1
+                // dest src
+
+                let i2 = self.get_operand(); // 1 byte; got operand, so adds 1 byte to full instruction
+                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                let a = (*r1);
+                let b = i2;
+
+                let (result, borrow) = (a).overflowing_sub(b);
+                
+                self.signs_sub(a, b, result, borrow);
+
+
+
+                self.increment_pc(3); // uses operand -> 3 bytes
+            },
+            0b0100_u16 => {
+                // i2 to m1
+                // dest src
+
+                let i2 = self.get_operand(); // 1 byte; got operand, so adds 1 byte to full instruction
+                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m1 = (m11 as u16) << 8 | (m12 as u16);
+
+                let m1val = self.mem.get(m1);
+
+                let a = m1val;
+                let b = i2;
+
+                let (result, borrow) = a.overflowing_sub(b);
+
+                self.signs_sub(a, b, result, borrow);
+
+                self.increment_pc(3);
+
+            },
+            _ => println!("Not accounted for"),
+        }
+    }
+
+    fn op_push(&mut self, mode: u16, reg: u16) {
+        let val: u8 = self.single_val(mode, reg);
+        self.push(val);
+    }
+
+    fn op_call(&mut self, mode: u16, reg: u16) {
+
+        let pos = self.pc.clone() + match mode {
+            0b0000_u16 => 2, // r
+            0b0001_u16 => 2, // m
+            0b0010_u16 => 4, // i
+            _ => 0, // not understood
+        };
+
+        self.push((pos >> 8) as u8);
+        self.push(pos as u8);
+
+        self.op_j(mode, reg);
+    }
+
+
+    fn op_ret(&mut self) {
+        let m2 = self.pop();
+        let m1 = self.pop();
+
+        self.pc = (m1 as u16) << 8 | (m2 as u16);
+    }
+
+
+    fn op_pop(&mut self, mode: u16, reg: u16) {
+        match mode {
+            0b0000_u16 => {
+                // r1
+                let val = self.pop();
+
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                *r1 = val;
+
+            },
+            0b0001_u16 => {
+                // m
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize]; // so will add 1 to reg
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m = (m1 as u16) << 8 | (m2 as u16);
+
+
+                let val = self.pop();
+                self.mem.set(m, val);
+            },
+            _ => println!("Unaccounted-for mode in pop"),
+        }
+    }
+
+
+    fn op_shl(&mut self, mode: u16, reg: u16) {
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                *r <<= 1;
+
+                self.increment_pc(2);
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                let unshifted = self.mem.get(m);
+
+                self.mem.set(m, unshifted << 1);
+
+                self.increment_pc(2);
+
+            },
+            _ => (),
+        }
+    }
+
+
+    fn op_shr(&mut self, mode: u16, reg: u16) {
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                *r >>= 1;
+
+                self.increment_pc(2);
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                let unshifted = self.mem.get(m);
+
+                self.mem.set(m, unshifted >> 1);
+
+                self.increment_pc(2);
+
+            },
+            _ => (),
+        }
+    }
+
+    fn op_sar(&mut self, mode: u16, reg: u16) {
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                let r_i: i8 = (*r as i8) >> 1;
+
+
+
+
+
+                *r = r_i as u8;
+
+                self.increment_pc(2);
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                let unshifted = self.mem.get(m);
+
+                let m_i: i8 = (unshifted as i8) >> 1;
+
+                self.mem.set(m, m_i as u8);
+
+                self.increment_pc(2);
+
+            },
+            _ => (),
+        }
+    }
+
 
     pub fn step(&mut self) -> bool { // 1 for did something, 0 for did nothing
         let instruction: u16 =
@@ -1130,7 +1529,7 @@ impl CPU {
 
 
         return match opcode {
-            0_u16 => false, // do nothing
+            0b000000_u16 => {self.increment_pc(2); return true;}, // NO OP
             0b000001_u16 => {self.op_move(mode, reg); return true;}, // MOVE
             0b000010_u16 => {self.op_add(mode, reg); return true;}, // ADD
             0b000011_u16 => {self.op_sub(mode, reg); return true;}, // SUB
@@ -1141,6 +1540,23 @@ impl CPU {
             0b001000_u16 => {self.op_or(mode, reg); return true;}, // OR
             0b001001_u16 => {self.op_xor(mode, reg); return true;}, // XOR
             0b001010_u16 => {self.op_not(mode, reg); return true;}, // NOT
+            0b001011_u16 => {self.op_j(mode, reg); return true;}, // JUMP
+            0b001100_u16 => {self.op_jz(mode, reg); return true;}, // JUMP Z
+            0b001101_u16 => {self.op_jc(mode, reg); return true;}, // JUMP C
+            0b001110_u16 => {self.op_jo(mode, reg); return true;}, // JUMP O
+            0b001111_u16 => {self.op_js(mode, reg); return true;}, // JUMP S
+            0b010000_u16 => {self.op_jnz(mode, reg); return true;}, // JUMP !Z
+            0b010001_u16 => {self.op_jg(mode, reg); return true;}, // JUMP >
+            0b010010_u16 => {self.op_jl(mode, reg); return true;}, // JUMP <
+            0b010011_u16 => {self.op_comp(mode, reg); return true;}, // COMPARE
+            0b010100_u16 => {self.op_push(mode, reg); return true;}, // PUSH
+            0b010101_u16 => {self.op_pop(mode, reg); return true;}, // POP
+            0b010110_u16 => {self.op_call(mode, reg); return true;}, // CALL
+            0b010111_u16 => {self.op_ret(); return true;}, // RETURN
+            0b011000_u16 => {self.op_shl(mode, reg); return true;}, // SHIFT LEFT
+            0b011001_u16 => {self.op_shr(mode, reg); return true;}, // LOGICAL SHIFT RIGHT
+            0b011010_u16 => {self.op_sar(mode, reg); return true;}, // ARITHMETIC SHIFT RIGHT
+            0b111111_u16 => false, // HALT
             _ => {println!("Unaccounted-for operation"); return false;},
         }
         
