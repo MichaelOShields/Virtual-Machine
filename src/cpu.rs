@@ -1,3 +1,5 @@
+use std::result;
+
 /*
 
 6 bits opcode
@@ -230,82 +232,44 @@ impl CPU {
     }   
 
 
-    #[allow(unused_assignments)]
     fn signs_add(&mut self, a: u8, b: u8, result: u8, carry: bool) {
-        let mut set_carry = self.flags.carry;
-        let mut set_zero = self.flags.zero;
-        let mut set_sign = self.flags.sign;
-        let mut set_over = self.flags.overflow;
-
-        set_carry = carry;
-        set_zero = result == 0;
-        set_sign = (result & 0b1000_0000_u8) != 0;
+        self.flags.carry = carry;
+        self.flags.zero = result == 0;
+        self.flags.sign = (result & 0b1000_0000_u8) != 0;
 
         let a_sign = (a & 0b1000_0000_u8) != 0;
         let b_sign = (b & 0b1000_0000_u8) != 0;
+        let result_sign = self.flags.sign;
 
-        let result_sign = set_sign;
-
-        set_over = (a_sign == b_sign) && (result_sign != a_sign);
-
-
-        self.flags.carry = set_carry;
-        self.flags.zero = set_zero;
-        self.flags.sign = set_sign;
-        self.flags.overflow = set_over;
-
+        self.flags.overflow = (a_sign == b_sign) && (result_sign != a_sign);
     }
 
-    #[allow(unused_assignments)]
     fn signs_sub(&mut self, a: u8, b: u8, result: u8, borrow: bool) {
-        let mut set_carry = self.flags.carry;
-        let mut set_zero = self.flags.zero;
-        let mut set_sign = self.flags.sign;
-        let mut set_over = self.flags.overflow;
 
-        set_carry = borrow;
-        set_zero = result == 0;
-        set_sign = (result & 0b1000_0000_u8) != 0;
-
+        self.flags.carry = borrow;
+        self.flags.zero = result == 0;
+        self.flags.sign = (result & 0b1000_0000_u8) != 0;
         let a_sign = (a & 0b1000_0000_u8) != 0;
         let b_sign = (b & 0b1000_0000_u8) != 0;
 
-        let result_sign = set_sign;
+        let result_sign = self.flags.sign;
+        self.flags.overflow = (a_sign != b_sign) && (result_sign != a_sign);
+    }
 
-        set_over = (a_sign != b_sign) && (result_sign != a_sign);
+    fn signs_mul(&mut self, result: u8, overflow: bool) {
 
-
-        self.flags.carry = set_carry;
-        self.flags.zero = set_zero;
-        self.flags.sign = set_sign;
-        self.flags.overflow = set_over;
+        self.flags.carry = overflow;
+        self.flags.zero = result == 0;
+        self.flags.sign = (result & 0b1000_0000_u8) != 0;
+        self.flags.overflow = overflow;
     }
 
 
-    #[allow(unused_assignments)]
-    fn signs_div(&mut self, a: u8, b: u8, result: u8, borrow: bool) {
-        let mut set_carry = self.flags.carry;
-        let mut set_zero = self.flags.zero;
-        let mut set_sign = self.flags.sign;
-        let mut set_over = self.flags.overflow;
-
-        set_carry = borrow;
-        set_zero = result == 0;
-        set_sign = (result & 0b1000_0000_u8) != 0;
-
-        let a_sign = (a & 0b1000_0000_u8) != 0;
-        let b_sign = (b & 0b1000_0000_u8) != 0;
-
-        let result_sign = set_sign;
-
-        set_over = (a_sign != b_sign) && (result_sign != a_sign);
-
-
-        self.flags.carry = set_carry;
-        self.flags.zero = set_zero;
-        self.flags.sign = set_sign;
-        self.flags.overflow = set_over;
-
+    fn signs_div(&mut self, result: u8) {
+    self.flags.carry = false; // no carry
+    self.flags.zero = result == 0;
+    self.flags.sign = (result & 0b1000_0000_u8) != 0;
+    self.flags.overflow = false;
     }
 
     fn op_add(&mut self, mode: u16, reg: u16) {
@@ -380,7 +344,7 @@ impl CPU {
 
                 let (result, carry) = a.overflowing_add(b);
 
-                self.mem.set(m1, r2 + m1val);
+                self.mem.set(m1, result);
 
                 self.signs_add(a, b, result, carry);
                 
@@ -404,7 +368,7 @@ impl CPU {
                 let (result, carry) = a.overflowing_add(b);
 
 
-                *r1 = i2 + *r1;
+                *r1 = result;
 
                 self.signs_add(a, b, result, carry);
 
@@ -515,8 +479,11 @@ impl CPU {
                 println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-
-                *r1 = *r1 - i2;
+                let a = *r1;
+                let b = i2;
+                let (result, borrow) = a.overflowing_sub(b);
+                *r1 = result;
+                self.signs_sub(a, b, result, borrow);
 
 
                 self.increment_pc(3); // uses operand -> 3 bytes
@@ -533,7 +500,9 @@ impl CPU {
 
                 let m1val = self.mem.get(m1);
 
-                self.mem.set(m1, m1val - i2);
+                let (result, borrow) = m1val.overflowing_sub(i2);
+                self.mem.set(m1, result);
+                self.signs_sub(m1val, i2, result, borrow);
 
                 self.increment_pc(3);
 
@@ -552,7 +521,8 @@ impl CPU {
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 / r2;
+                let result =  *r1 / r2;
+                self.signs_div(result);
                 self.increment_pc(2); // increment by # of bytes in instruction
             },
             0b0001_u16 => {
@@ -572,6 +542,7 @@ impl CPU {
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 *r1 = *r1 / self.mem.get(m2);
+                self.signs_div(*r1);
                 
                 self.increment_pc(2);
 
@@ -586,7 +557,9 @@ impl CPU {
 
                 let m1val = self.mem.get(m1);
 
-                self.mem.set(m1, m1val / r2);
+                let result = m1val / r2;
+                self.mem.set(m1, result);
+                self.signs_div(result);
                 
                 self.increment_pc(2);
 
@@ -601,6 +574,7 @@ impl CPU {
 
 
                 *r1 = *r1 / i2;
+                self.signs_div(*r1);
 
 
                 self.increment_pc(3); // uses operand -> 3 bytes
@@ -617,7 +591,9 @@ impl CPU {
 
                 let m1val = self.mem.get(m1);
 
-                self.mem.set(m1, m1val / i2);
+                let result = m1val / i2;
+                self.mem.set(m1, result);
+                self.signs_div(result);
 
                 self.increment_pc(3);
 
@@ -636,7 +612,9 @@ impl CPU {
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 * r2;
+                let (result, overflow) = (*r1).overflowing_mul(r2);
+                self.signs_mul(result, overflow);
+                *r1 = result;
                 self.increment_pc(2); // increment by # of bytes in instruction
             },
             0b0001_u16 => {
@@ -655,8 +633,10 @@ impl CPU {
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 * self.mem.get(m2);
-                
+                let (result, overflow) = (*r1).overflowing_mul(self.mem.get(m2));
+
+                self.signs_mul(result, overflow);
+                *r1 = result;
                 self.increment_pc(2);
 
             },
@@ -670,7 +650,14 @@ impl CPU {
 
                 let m1val = self.mem.get(m1);
 
-                self.mem.set(m1, m1val * r2);
+                let (result, overflow) = m1val.overflowing_mul(r2);
+
+                let a = m1val;
+                let b = r2;
+
+                self.signs_mul(result, overflow);
+
+                self.mem.set(m1, result);
                 
                 self.increment_pc(2);
 
@@ -684,8 +671,10 @@ impl CPU {
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
-                *r1 = *r1 * i2;
+                let (result, overflow) = (*r1).overflowing_mul(i2);
+                self.signs_mul(result, overflow);
 
+                *r1 = result;
 
                 self.increment_pc(3); // uses operand -> 3 bytes
             },
@@ -701,7 +690,10 @@ impl CPU {
 
                 let m1val = self.mem.get(m1);
 
-                self.mem.set(m1, m1val * i2);
+                let (result, overflow) = m1val.overflowing_mul(i2);
+                self.signs_mul(result, overflow);
+
+                self.mem.set(m1, result);
 
                 self.increment_pc(3);
 
