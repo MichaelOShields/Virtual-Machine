@@ -5,7 +5,6 @@
 */
 
 #[derive(Clone)]
-#[allow(dead_code)]
 pub struct Mem {
     mem: [u8; 65536],
 }
