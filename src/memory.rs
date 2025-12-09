@@ -1,8 +1,4 @@
-/*
 
-
-
-*/
 
 #[derive(Clone)]
 pub struct Mem {
@@ -13,8 +9,6 @@ pub struct Mem {
 
 impl Mem {
     pub fn new() -> Self {
-
-
         Self {
             mem: [0; 65536],
         }
@@ -31,6 +25,4 @@ impl Mem {
         self.mem[dest as usize] = src;
 
     }
-
-
 }

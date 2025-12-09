@@ -1,14 +1,17 @@
 mod cpu;
 mod memory;
+mod vc;
+mod vm;
 
-use cpu::CPU;
+use cpu::Cpu;
 use memory::Mem;
+use vc::VideoController;
+use vm::Vm;
 
 
 
 fn main() {
     let mut memory = Mem::new();
-
     memory.set(0x00, 0b0000_0100_u8); // move command, no modes so far
     memory.set(0x01, 0b1101_0000_u8); // moving i2 -> r1
     memory.set(0x02, 0b0000_0000_u8);
@@ -39,16 +42,10 @@ fn main() {
 
 
     memory.set(0x0F, 0b1111_1100_u8);
+    let cpu = Cpu::new();
+    let vc = VideoController::new();
+    let mut vm: Vm = Vm::new(memory, vc, cpu);
 
-
-    let mut cpu = CPU::new(memory);
-
-    let mut cpu_running = true;
-
-    while cpu_running {
-        cpu_running = cpu.step();
-        cpu.status();
-    }
-    println!("CPU halted")
+    vm.run();
 
 }
