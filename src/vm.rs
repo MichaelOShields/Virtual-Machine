@@ -27,10 +27,10 @@ impl Vm {
         }
     }
 
-    pub fn run(&mut self) {
-        while !self.cpu.halted {
-            self.step();
-        }
-        println!("CPU halted");
-    }
+    // pub fn run(&mut self) {
+    //     while !self.cpu.halted {
+    //         self.step();
+    //     }
+    //     println!("CPU halted");
+    // }
 }
