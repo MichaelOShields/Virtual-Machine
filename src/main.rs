@@ -82,7 +82,7 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 // ---- run VM and refresh framebuffer --------------------------
-                self.vm.step_many(50_000);
+                self.vm.step_many(10);
                 self.vm
                     .video
                     .update_framebuffer(self.vm.mem.get_range(0x800, 0xFFF+1));
@@ -94,10 +94,16 @@ impl ApplicationHandler for App {
                     .unwrap();
 
                 {
+                    // make counter to check how many times inner loop runs
                     let mut buf = surf.buffer_mut().unwrap();
-                    for (i, &pixel) in self.vm.video.framebuffer.iter().enumerate() {
-                        buf[i] = if pixel == 0 { 0xFF000000 } else { 0xFFFFFFFF };
+                    for (byte_idx, &byte) in self.vm.video.framebuffer.iter().enumerate() {
+                        for bit_idx in 0..8 {
+                            let pixel_idx = byte_idx * 8 + bit_idx;
+                            let is_set = (byte >> bit_idx) & 1 == 1;
+                            buf[pixel_idx] = if is_set { 0xFFFFFFFF } else { 0xFF000000 };
+                        }
                     }
+                    buf.present().unwrap(); // explicitly present   
                 } // buffer presented on drop
 
                 // queue next frame
