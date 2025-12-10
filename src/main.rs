@@ -21,13 +21,13 @@ use pixels::{Pixels, SurfaceTexture};
 const SIZE: u8 = 128;
 
 
-struct App {
+struct App<'a> {
     window: Option<Window>,
-    pixels: Option<Pixels>,
+    pixels: Option<Pixels<'a>>,
     vm: Vm,
 }
 
-impl App {
+impl<'a> App<'a>{
     pub fn new(vm: Vm) -> Self {
         Self {
             window: None,
@@ -37,7 +37,7 @@ impl App {
     }
 }
 
-impl ApplicationHandler for App {
+impl<'a> ApplicationHandler for App<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window = event_loop.create_window(Window::default_attributes()).unwrap();
         
