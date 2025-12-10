@@ -26,8 +26,13 @@ impl VideoController {
     }
 
     pub fn update_framebuffer(&mut self, mem: &[u8]) {
-        for i in self.vram_base as usize..(self.vram_base as usize + (self.width * self.width)) {
+        for i in 0..self.framebuffer.len() {
             self.framebuffer[i] = mem[i];
         }
+        // self.print_frame();
+    }
+
+    pub fn print_frame(&mut self) {
+        println!("{:?}", self.framebuffer);
     }
 }

@@ -28,6 +28,12 @@ impl Vm {
         if !self.cpu.halted {
             self.cpu.step(&mut self.mem);
             self.cpu.status();
+
+
+            self.video.update_framebuffer(self.mem.get_range(self.video.vram_base, self.video.vram_base + self.video.framebuffer.len() as u16));
+        }
+        else {
+            println!("CPU halted");
         }
     }
 
@@ -37,10 +43,14 @@ impl Vm {
         }
     }
 
-    // pub fn run(&mut self) {
-    //     while !self.cpu.halted {
-    //         self.step();
-    //     }
-    //     println!("CPU halted");
-    // }
+    pub fn run(&mut self) {
+        while !self.cpu.halted {
+            self.step();
+        }
+        println!("CPU halted");
+    }
+
+    pub fn print_video(&mut self) {
+        self.video.print_frame();
+    }
 }
