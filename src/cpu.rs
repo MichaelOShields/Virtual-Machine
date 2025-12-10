@@ -283,10 +283,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -339,7 +339,7 @@ impl Cpu {
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
                 // println!("{}", i2);
                 // println!("reg: {:016b}", reg);
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -457,7 +457,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 let a = *r1;
@@ -517,10 +517,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -553,7 +553,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -613,10 +613,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -714,10 +714,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -746,7 +746,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -797,10 +797,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -829,7 +829,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -881,10 +881,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -913,7 +913,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -965,10 +965,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -997,7 +997,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -1048,10 +1048,10 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                println!("regs: {:016b}", reg);
+                // println!("regs: {:016b}", reg);
 
-                println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                println!("m2: {}", m2);
+                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
+                // println!("m2: {}", m2);
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -1078,7 +1078,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -1300,7 +1300,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 let a = (*r1);

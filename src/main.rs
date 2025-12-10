@@ -85,7 +85,18 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 // ---- run VM and refresh framebuffer --------------------------
-                self.vm.step();
+                for _ in 0..30 { // run multiple steps per frame
+                    if !self.vm.cpu.halted {
+                        self.vm.step();
+
+                        // Debug: print when we hit certain addresses
+                        if self.vm.cpu.regs[0] == 0x0C && self.vm.cpu.regs[1] == 0x00 {
+                            println!("Halfway! R0={:02X}, R1={:02X}, PC={:04X}", 
+                            self.vm.cpu.regs[0], self.vm.cpu.regs[1], self.vm.cpu.pc);
+                        }
+                    }
+                }
+                
                 self.vm
                     .video
                     .update_framebuffer(self.vm.mem.get_range(0x800, 0xFFF+1));
@@ -135,116 +146,66 @@ impl ApplicationHandler for App {
 fn main() {
     // ----- sample program in memory -----------------------------------------
     let mut memory = Mem::new();
-    memory.set(0x00, 0b0000_0100);
-    memory.set(0x01, 0b1101_0000);
-    memory.set(0x02, 0);
-    memory.set(0x03, 0b0000_0100);
-    memory.set(0x04, 0b1101_1000);
-    memory.set(0x05, 0b1010_0101);
-    memory.set(0xA5, 0b0000_1100);
-    memory.set(0x06, 0b0000_0100);
-    memory.set(0x07, 0b0110_0010);
-    memory.set(0x08, 0b0000_0100);
-    memory.set(0x09, 0b1100_0000);
-    memory.set(0x0A, 0b0010_0001);
-    memory.set(0x0B, 0b0000_1000);
-    memory.set(0x0C, 0b0010_0011);
-    memory.set(0x0D, 0b0000_1100);
-    memory.set(0x0E, 0b0010_0000);
 
-    memory.set(0x0F, 0b0000_0100);
-    memory.set(0x10, 0b1111_1000);
-    memory.set(0x11, 0b1111_1111);
+    // Initialize R0 = 0x08, R1 = 0x00 (address 0x0800)
+    memory.set(0x00, 0b00000100);  // MOVE opcode 000001, mode 00
+    memory.set(0x01, 0b11000000);  // mode 11 (0011), reg 000000 (R0)
+    memory.set(0x02, 0x08);        // value = 0x08
 
+    memory.set(0x03, 0b00000100);  // MOVE opcode 000001, mode 00
+    memory.set(0x04, 0b11001000);  // mode 11 (0011), reg 001000 (R1)
+    memory.set(0x05, 0x00);        // value = 0x00
 
+    // ===== MAIN LOOP starts at 0x06 =====
 
-    // regs 5 and 6 saved for mem addy
-    memory.set(0x012, 0b0000_0100);
-    memory.set(0x013, 0b1110_1000);
-    memory.set(0x013, 0x00);
+    // Compare R0 with 0x10
+    memory.set(0x06, 0b01001100);   // COMP opcode 010011, mode 00
+    memory.set(0x07, 0b11000000);   // mode 11 (0011), reg 000000 (R0)
+    memory.set(0x08, 0x10);         // immediate value = 0x10
 
-    
-    memory.set(0x14, 0b0000_0100);
-    memory.set(0x15, 0b1111_0000);
-    memory.set(0x16, 0xFF);
+    // If R0 == 0x10, jump to HALT at 0x30
+    memory.set(0x09, 0b00110000);   // JZ opcode 001100, mode 00
+    memory.set(0x0A, 0b10000000);   // mode 10 (0010), reg 000000
+    memory.set(0x0B, 0x00);         // high byte of address
+    memory.set(0x0C, 0x30);         // low byte = 0x30
 
+    // Write 0xFF to memory at address R0:R1
+    memory.set(0x0D, 0b00000101);   // MOVE opcode 000001, mode 01
+    memory.set(0x0E, 0b00000000);   // mode 00 (0100), reg 000000 (M at R0:R1)
+    memory.set(0x0F, 0xFF);         // value = 0xFF
 
-    // keep track of current position (start at 0x800)
-    memory.set(0xFF, 0b0000_0100);
-    memory.set(0x100, 0b1100_0000);
-    memory.set(0x101, 0b0000_1000);
+    // Add 1 to R1
+    memory.set(0x10, 0b00001000);   // ADD opcode 000010, mode 00
+    memory.set(0x11, 0b11001000);   // mode 11 (0011), reg 001000 (R1)
+    memory.set(0x12, 0x01);         // value = 1
 
-    memory.set(0x102, 0b0000_0100);
-    memory.set(0x103, 0b1100_1000);
-    memory.set(0x104, 0b0000_0000);
+    // If carry, jump to increment R0 at 0x20
+    memory.set(0x13, 0b00110100);   // JC opcode 001101, mode 00
+    memory.set(0x14, 0b10000000);   // mode 10 (0010), reg 000000
+    memory.set(0x15, 0x00);         // high byte
+    memory.set(0x16, 0x20);         // low byte = 0x20
 
+    // Loop back to 0x06
+    memory.set(0x17, 0b00101100);   // JUMP opcode 001011, mode 00
+    memory.set(0x18, 0b10000000);   // mode 10 (0010), reg 000000
+    memory.set(0x19, 0x00);         // high byte
+    memory.set(0x1A, 0x06);         // low byte = 0x06
 
-    // jump
-    memory.set(0x17, 0b0010_1100);
-    memory.set(0x18, 0b0010_1000);
+    // ===== INCREMENT R0 at 0x20 =====
+    memory.set(0x20, 0b00001000);   // ADD opcode 000010, mode 00
+    memory.set(0x21, 0b11000000);   // mode 11 (0011), reg 000000 (R0)
+    memory.set(0x22, 0x01);         // value = 1
 
+    // Jump back to 0x06
+    memory.set(0x23, 0b00101100);   // JUMP opcode 001011, mode 00
+    memory.set(0x24, 0b10000000);   // mode 10 (0010), reg 000000
+    memory.set(0x25, 0x00);         // high byte
+    memory.set(0x26, 0x06);         // low byte = 0x06
 
-    // set the program
-    // memory.set(0xFF, 0b1111_1100);
+    // ===== HALT at 0x30 =====
+    memory.set(0x30, 0b11111100);   // HALT opcode 111111, mode 00
+    memory.set(0x31, 0b00000000);   // (padding)
 
-    // compare regs 0 and 1 to 4096; if > then halt
-
-    // if reg 0 is @ 16, then halt
-
-
-    // setting flags
-    memory.set(0xFF, 0b0100_1100);
-    memory.set(0x100, 0b1100_0000);
-    memory.set(0x101, 0b0001_0000);
-
-    // jump zero -> if zero, send to 0x2F (halt)
-    memory.set(0x102, 0b0011_0000);
-    memory.set(0x103, 0b1000_0000);
-
-    memory.set(0x104, 0b0000_0000);
-    memory.set(0x105, 0b0010_1111);
-
-    // otherwise: lock in:
-
-    // loop step 1
-    memory.set(0x106, 0b0000_0101);
-    memory.set(0x107, 0b0000_0000);
-    memory.set(0x108, 0b0000_0000);
-
-    // loop step 2
-    
-    // Add 1 to lower number (reg 1)
-    memory.set(0x109, 0b0000_1000);
-    memory.set(0x10A, 0b1100_1000);
-    memory.set(0x10B, 0b0000_0001);
-
-    memory.set(0x10C, 0b0011_0100);
-    memory.set(0x10D, 0b1000_0000);
-    memory.set(0x10E, 0b0000_0000);
-    memory.set(0x10F, 0xC8);
-
-    // loop step 3
-    memory.set(0x110, 0b0000_0101);
-    memory.set(0x111, 0b0000_0000);
-    memory.set(0x112, 0b1111_1111);
-
-    memory.set(0x113, 0b0010_1100);
-    memory.set(0x114, 0b1000_0000);
-    memory.set(0x115, 0b0000_0000);
-    memory.set(0x116, 0xFF);
-    
-    
-
-
-
-
-    memory.set(0xC8, 0b0000_1000);
-    memory.set(0xC9, 0b1100_0000);
-    memory.set(0xCA, 0b0000_0001);
-    memory.set(0xCB, 0b0010_1100);
-    memory.set(0xCC, 0b1000_0000);
-    memory.set(0xCD, 0b0000_0001);
-    memory.set(0xCE, 0b0001_0000);
 
     
 
