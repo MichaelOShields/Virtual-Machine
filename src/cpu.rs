@@ -503,7 +503,9 @@ impl Cpu {
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 let result =  *r1 / r2;
+                *r1 = result;
                 self.signs_div(result);
+
                 self.increment_pc(2); // increment by # of bytes in instruction
             },
             0b0001_u16 => {
