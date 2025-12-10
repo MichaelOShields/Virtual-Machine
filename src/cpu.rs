@@ -1204,7 +1204,7 @@ impl Cpu {
                     // i
                     self.increment_pc(4); // jumping code doesn't run so must compensate
                 },
-                _ => println!("Not accounted for")
+                _ => println!("Not accounted for"),
             }
         }
     }
@@ -1510,7 +1510,7 @@ impl Cpu {
 
 
         match opcode {
-            0b000000_u16 => {self.increment_pc(2); }, // NO OP
+            0b000000_u16 => {self.increment_pc(1); }, // NO OP
             0b000001_u16 => {self.op_move(mode, reg, mem); }, // MOVE
             0b000010_u16 => {self.op_add(mode, reg, mem); }, // ADD
             0b000011_u16 => {self.op_sub(mode, reg, mem); }, // SUB

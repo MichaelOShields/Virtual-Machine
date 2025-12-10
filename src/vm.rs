@@ -32,21 +32,15 @@ impl Vm {
             self.video.update_framebuffer(self.mem.get_range(self.video.vram_base, self.video.vram_base + self.video.framebuffer.len() as u16));
         }
         else {
-            println!("CPU halted");
+            println!("CPU halted at {}", self.cpu.pc);
         }
+        self.print_video();
     }
 
     pub fn step_many(&mut self, n: i32) {
         for _ in 0..n {
             self.step();
         }
-    }
-
-    pub fn run(&mut self) {
-        while !self.cpu.halted {
-            self.step();
-        }
-        println!("CPU halted");
     }
 
     pub fn print_video(&mut self) {
