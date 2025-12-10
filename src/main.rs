@@ -50,10 +50,13 @@ impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         // ---- window ---------------------------------------------------------
         let window = Rc::new(
-            event_loop
-                .create_window(Window::default_attributes())
-                .unwrap(),
-        );
+        event_loop
+            .create_window(
+                Window::default_attributes()
+                    .with_inner_size(winit::dpi::PhysicalSize::new(512, 512)) // 4x scale
+            )
+            .unwrap(),
+    );
         let size = window.inner_size();
 
         // ---- softbuffer context + surface -----------------------------------
@@ -90,20 +93,33 @@ impl ApplicationHandler for App {
                 // ---- blit VM framebuffer into softbuffer surface -------------
                 let surf  = self.surface.as_mut().unwrap();
                 surf
-                    .resize(Option::expect(NonZero::new(self.vm.video.width as u32), "hi"), Option::expect(NonZero::new(self.vm.video.height as u32), "hi"))
+                    .resize(Option::expect(NonZero::new(512), "hi"), Option::expect(NonZero::new(512), "hi"))
                     .unwrap();
 
                 {
                     // make counter to check how many times inner loop runs
+                    let surf = self.surface.as_mut().unwrap();
                     let mut buf = surf.buffer_mut().unwrap();
+                    
+                    let scale = 4; // 512 / 128
                     for (byte_idx, &byte) in self.vm.video.framebuffer.iter().enumerate() {
                         for bit_idx in 0..8 {
-                            let pixel_idx = byte_idx * 8 + bit_idx;
-                            let is_set = (byte >> bit_idx) & 1 == 1;
-                            buf[pixel_idx] = if is_set { 0xFFFFFFFF } else { 0xFF000000 };
+                            let fb_pixel_idx = byte_idx * 8 + bit_idx;
+                            let x = fb_pixel_idx % 128;
+                            let y = fb_pixel_idx / 128;
+                            let color = if (byte >> bit_idx) & 1 == 1 { 0xFFFFFFFF } else { 0xFF000000 };
+                            
+                            // Draw scale x scale block
+                            for dy in 0..scale {
+                                for dx in 0..scale {
+                                    let screen_idx = (y * scale + dy) * 512 + (x * scale + dx);
+                                    buf[screen_idx] = color;
+                                }
+                            }
                         }
                     }
-                    buf.present().unwrap(); // explicitly present   
+                    
+                    buf.present().unwrap();
                 } // buffer presented on drop
 
                 // queue next frame
