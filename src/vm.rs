@@ -1,21 +1,25 @@
-
 use crate::cpu::Cpu;
 use crate::memory::Mem;
 use crate::vc::VideoController;
+use crate::pointer::Pointer;
+
+
 
 
 pub struct Vm {
     pub mem: Mem,
     pub cpu: Cpu,
     pub video: VideoController,
+    pub ptr: Pointer,
 }
 
 impl Vm {
-    pub fn new(mem: Mem, video: VideoController, cpu: Cpu) -> Self {
+    pub fn new(mem: Mem, video: VideoController, cpu: Cpu, ptr: Pointer) -> Self {
         Self {
             mem: mem,
             cpu: cpu,
-            video: video
+            video: video,
+            ptr,
         }
     }
 
@@ -24,6 +28,12 @@ impl Vm {
         if !self.cpu.halted {
             self.cpu.step(&mut self.mem);
             self.cpu.status();
+        }
+    }
+
+    pub fn step_many(&mut self, n: i32) {
+        for _ in 0..n {
+            self.step();
         }
     }
 

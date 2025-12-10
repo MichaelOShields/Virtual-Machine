@@ -3,26 +3,56 @@ mod memory;
 mod vc;
 mod vm;
 mod binary;
+mod pointer;
 
 use cpu::Cpu;
 use memory::Mem;
 use vc::VideoController;
 use vm::Vm;
+use pointer::Pointer;
 
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
+use pixels::{Pixels, SurfaceTexture};
 
 
-#[derive(Default)]
+const SIZE: u8 = 128;
+
+
 struct App {
     window: Option<Window>,
+    pixels: Option<Pixels>,
+    vm: Vm,
+}
+
+impl App {
+    pub fn new(vm: Vm) -> Self {
+        Self {
+            window: None,
+            pixels: None,
+            vm,
+        }
+    }
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.window = Some(event_loop.create_window(Window::default_attributes()).unwrap());
+        let window = event_loop.create_window(Window::default_attributes()).unwrap();
+        
+        let size = window.inner_size();
+        let surface = SurfaceTexture::new(size.width, size.height, &window);
+
+        let pixels = Pixels::new(
+            self.vm.video.width as u32,
+            self.vm.video.height as u32,
+            surface,
+        ).unwrap();
+
+        self.window = Some(window);
+        self.pixels = Some(pixels);
+        // self.window = Some(event_loop.create_window(Window::default_attributes()).unwrap());
     }
 
     fn window_event(
@@ -37,7 +67,17 @@ impl ApplicationHandler for App {
             },
             WindowEvent::RedrawRequested => {
                 // Render
+                self.vm.step_many(50_000);
+                self.vm.video.update_framebuffer(self.vm.mem.get_range(0x800, 0xFFF));
 
+                let frame = self.pixels.as_mut().unwrap().frame_mut();
+                let framebuf = &self.vm.video.framebuffer;
+
+                for (i, pxl) in frame.chunks_exact_mut(4).enumerate() {
+                    pxl.copy_from_slice(&framebuf[i].to_le_bytes());
+                }
+
+                self.pixels.as_mut().unwrap().render().unwrap();
                 self.window.as_ref().unwrap().request_redraw();
             },
             _ => (),
@@ -85,7 +125,18 @@ fn main() {
     // 0x800 - 0xFFF
 
     let vc = VideoController::new(128, 128, 0x800);
-    let mut vm: Vm = Vm::new(memory, vc, cpu);
+    let vm: Vm = Vm::new(memory, vc, cpu, Pointer{ x: 0, y: 0 });
+
+
+    // let window = {
+    //     let size = LogicalSize::new(SIZE as f64, SIZE as f64);
+    //     WindowBuilder::new()
+    //         .with_title("Hello Pixels")
+    //         .with_inner_size(SIZE)
+    //         .with_min_inner_size(SIZE)
+    //         .build(&event_loop)
+    //         .unwrap()
+    // };
 
     // vm.run();
 
@@ -93,7 +144,7 @@ fn main() {
 
     event_loop.set_control_flow(ControlFlow::Poll);
     
-    let mut app = App::default();
+    let mut app = App::new(vm);
     match event_loop.run_app(&mut app) {
         Ok(()) => (),
         Err(e) => println!("Received event error {}", e),

@@ -1,6 +1,6 @@
 
 
-#[derive(Clone)]
+
 pub struct Mem {
     mem: [u8; 65536],
 }
@@ -24,5 +24,9 @@ impl Mem {
 
         self.mem[dest as usize] = src;
 
+    }
+
+    pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] {
+        return &self.mem[a as usize..b as usize];
     }
 }
