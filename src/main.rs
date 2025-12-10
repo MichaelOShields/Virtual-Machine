@@ -85,7 +85,7 @@ impl ApplicationHandler for App {
                 self.vm.step_many(50_000);
                 self.vm
                     .video
-                    .update_framebuffer(self.vm.mem.get_range(0x800, 0xFFF));
+                    .update_framebuffer(self.vm.mem.get_range(0x800, 0xFFF+1));
 
                 // ---- blit VM framebuffer into softbuffer surface -------------
                 let surf  = self.surface.as_mut().unwrap();
@@ -94,8 +94,10 @@ impl ApplicationHandler for App {
                     .unwrap();
 
                 {
-                    let mut buf = surf.buffer_mut().unwrap();      // &mut [u32]
-                    buf.copy_from_slice(self.vm.video.framebuffer);
+                    let mut buf = surf.buffer_mut().unwrap();
+                    for (i, &pixel) in self.vm.video.framebuffer.iter().enumerate() {
+                        buf[i] = if pixel == 0 { 0xFF000000 } else { 0xFFFFFFFF };
+                    }
                 } // buffer presented on drop
 
                 // queue next frame

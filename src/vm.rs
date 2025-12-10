@@ -29,7 +29,6 @@ impl Vm {
             self.cpu.step(&mut self.mem);
             self.cpu.status();
 
-
             self.video.update_framebuffer(self.mem.get_range(self.video.vram_base, self.video.vram_base + self.video.framebuffer.len() as u16));
         }
         else {
