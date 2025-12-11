@@ -521,7 +521,8 @@ static PROGRAM: &[u8] = &[
     // set up r2 for bit counter for white thing
     0b0000_0100,
     0b1101_0000,
-    0b0000_0001,
+    // 0b1000_0000,
+    0b1111_1111,
 
     // 0x409, skips ahead to 0x412
     0b0010_1100,
@@ -529,14 +530,17 @@ static PROGRAM: &[u8] = &[
     0b0000_0100,
     0b0001_0010,
 
+
     // 0x40D: update vram ptr to R2, SHR R2
     // set vram ptr to R2, SHR R2
     0b0000_0100,
     0b1000_0010, // R2 -> m1 (R0)
 
     // SHR
-    0b0110_0100,
-    0b0001_0000,
+    // 0b0110_0100,
+    // 0b0001_0000,
+    0b0000_0000,
+    0b0000_0000,
 
     // at end, op_ret
     0b0101_1100,
@@ -551,14 +555,17 @@ static PROGRAM: &[u8] = &[
     0b0000_0100,
     0b0000_1101,
 
-    // check if R2 is all zeros
+    // check if R2 is all zeros -> have iterated 8 times
     // op_comp w/ 0000_0000
-    0b0100_1100,
-    0b1101_0000,
+    // 0b0100_1100,
+    // 0b1101_0000,
+    // 0b0000_0000,
+    0b0000_0000,
+    0b0000_0000,
     0b0000_0000,
 
     // jz to future where we reset R2 to 1000_0000 & increment R1 and R0
-    0b0011_0000,
+    0b0010_1100, // temp change 2 jump
     0b1000_0000,
     // +2 (41B 41C) to 421:
     0b0000_0100,
@@ -581,16 +588,16 @@ static PROGRAM: &[u8] = &[
 
     // carry jump to reset R1 and increment R0 (later)
     // +4 (424 425 426 427)
-    0b0011_0100, // 424
+    0b0011_0100, // 424 check
     0b1000_0000,
-    0b0000_0100, // 42C
-    0b0010_1100,
-
+    0b0000_0100, // 42F
+    0b0010_1111,
+    
     // otherwise jump to continue
     0b0100_0000,
     0b1000_0000,
     // 0x412 (or wherever main loop is):
-    0b0000_0100,
+    0b0000_0100, // 42A
     0b0001_0010,
 
    
@@ -598,42 +605,43 @@ static PROGRAM: &[u8] = &[
     // reset R2
     0b0000_0100, // 42C
     0b1101_0000,
-    0b0000_0001,
+    0b1111_1111,
 
     // increment R0:
-    0b0000_1000, // 42B
+    0b0000_1000, // 42F
     0b1100_0000,
     0b0000_0001,
+    
     // reset R1:
-    0b0000_0100, // 42E
+    0b0000_0100, // 432
     0b1100_1000,
     0b0000_0000,
 
     // check if R0 = 0b0001_0000 => if so done (or reset)
-    0b0100_1100, // 431
+    0b0100_1100, // 435
     0b1100_0000,
-    0b0001_0000,
+    0b0001_0000, // correct I believe
 
     // zero flag jump to restart
-    0b0100_0000,
+    0b0011_0000,
     0b1000_0000,
-    // 0x400 (restarts)
+    // 0x442 (halts)
     0b0000_0100,
-    0b0000_0000,
+    0x42,
 
     // return:
     // 0b0101_1100,
 
     // jump to continue
-    0b0100_0000,
+    0b0101_1000,
     0b1000_0000,
     // 0x412 (or wherever main loop is):
     0b0000_0100,
     0b0001_0010,
 
 
-    0b1111_1100,
-
+    0b1111_1100, // 442
+];
 
 
     
@@ -649,12 +657,12 @@ static PROGRAM: &[u8] = &[
      */
     // try to have this at 0x5F4 (1524 bytes)
     // step 1: zero carry R2
-    0b001100
+    // 0b001100
     
 
     // logical shr
 
-];
+//];
 
 fn load_program(memory: &mut Mem, bytes: &[u8]) {
     let base = 0x400;
