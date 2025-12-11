@@ -41,8 +41,4 @@ impl Vm {
             self.step();
         }
     }
-
-    pub fn print_video(&mut self) {
-        self.video.print_frame();
-    }
 }

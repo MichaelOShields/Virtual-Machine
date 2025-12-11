@@ -2,7 +2,7 @@
 
 
 pub struct Mem {
-    mem: [u8; 65536],
+    mem: [u8; 16384],
 }
 
 
@@ -10,7 +10,7 @@ pub struct Mem {
 impl Mem {
     pub fn new() -> Self {
         Self {
-            mem: [0; 65536],
+            mem: [0; 16384],
         }
     }
 
