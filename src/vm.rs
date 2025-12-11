@@ -39,6 +39,9 @@ impl Vm {
     pub fn step_many(&mut self, n: i32) {
         for _ in 0..n {
             self.step();
+            if self.cpu.halted {
+                break;
+            }
         }
     }
 }

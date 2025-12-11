@@ -29,4 +29,9 @@ impl Mem {
     pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] {
         return &self.mem[a as usize..b as usize];
     }
+
+    pub fn set_range(&mut self, a: u16, b: u16, src: u8) {
+        let slice = &mut self.mem[a as usize..b as usize];
+        slice.fill(src);
+    }
 }

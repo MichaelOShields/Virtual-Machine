@@ -112,7 +112,7 @@ impl Cpu {
             regs: [0; 8],
             flags: flags,
             pc: 0,
-            sp: 65535,
+            sp: 0,
             halted: false,
         }
     }
@@ -247,10 +247,10 @@ impl Cpu {
 
 
     fn signs_div(&mut self, result: u8) {
-    self.flags.carry = false; // no carry
-    self.flags.zero = result == 0;
-    self.flags.sign = (result & 0b1000_0000_u8) != 0;
-    self.flags.overflow = false;
+        self.flags.carry = false; // no carry
+        self.flags.zero = result == 0;
+        self.flags.sign = (result & 0b1000_0000_u8) != 0;
+        self.flags.overflow = false;
     }
 
     fn op_add(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
@@ -1147,6 +1147,7 @@ impl Cpu {
 
 
     fn op_j(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+        // println!("Jumping from: {:016b}", self.pc);
         match mode {
             0b0000_u16 => {
                 // r
@@ -1303,10 +1304,11 @@ impl Cpu {
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                let a = (*r1);
+                let a = *r1;
                 let b = i2;
 
                 let (result, borrow) = (a).overflowing_sub(b);
+                
                 
                 self.signs_sub(a, b, result, borrow);
 
@@ -1498,6 +1500,48 @@ impl Cpu {
         }
     }
 
+    fn op_setsp(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let r12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (r11 as u16) << 8 | (r12 as u16);
+
+                self.sp = m;
+                self.increment_pc(2);
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                self.sp = (mem.get(m) as u16) << 8 | (mem.get(m + 1) as u16);
+
+                self.increment_pc(2);
+
+            },
+            0b0010_u16 => {
+                // i
+                let i1 = self.get_operand(mem);
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem);
+
+                let i = (i1 as u16) << 8 | (i2 as u16);
+
+                self.sp = i;
+                self.increment_pc(3);
+            },
+            _ => println!("Not accounted for"),
+        }
+    }
+
 
     pub fn step(&mut self, mem: &mut Mem) { // 1 for did something, 0 for did nothing
         let instruction: u16 =
@@ -1537,14 +1581,20 @@ impl Cpu {
             0b011000_u16 => {self.op_shl(mode, reg, mem); }, // SHIFT LEFT
             0b011001_u16 => {self.op_shr(mode, reg, mem); }, // LOGICAL SHIFT RIGHT
             0b011010_u16 => {self.op_sar(mode, reg, mem); }, // ARITHMETIC SHIFT RIGHT
+            0b011011_u16 => {self.op_setsp(mode, reg, mem); }, // SET STACK POINTER
             0b111111_u16 => {self.halted = true; }, // HALT
-            _ => {println!("Unaccounted-for operation"); },
+            _ => {println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:016b}", instruction, self.pc); },
         }
+
+        self.status();
         
     }
 
 
     pub fn status(&self) {
         println!("Registers: {:?}", self.regs);
+        if self.halted {
+            println!("Halted");
+        }
     }
 }
