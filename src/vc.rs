@@ -4,7 +4,7 @@
  * 2048 bytes -> 2^11 - 2^12 (2048-4096)
  */
 
- use crate::memory::Mem;
+ use crate::bus::Bus;
  use crate::binary::{get_bits_lsb,get_bits_msb};
 
 pub struct VideoController {

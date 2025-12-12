@@ -1,23 +1,24 @@
 //! main.rs
 mod cpu;
-mod memory;
+mod bus;
 mod vc;
 mod vm;
 mod binary;
-mod pointer;
+mod device;
 
 use cpu::Cpu;
-use memory::Mem;
+use bus::Bus;
 use vc::VideoController;
 use vm::Vm;
-use pointer::Pointer;
+use device::{Mouse, Keyboard};
 
 use std::{num::NonZero, rc::Rc};
 use winit::{
     application::ApplicationHandler,
-    event::WindowEvent,
+    event::{ElementState, KeyEvent, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     window::{Window, WindowId},
+    keyboard::{Key, NamedKey}
 };
 
 // ── softbuffer replaces pixels ────────────────────────────────────────────────
@@ -84,21 +85,63 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
 
-            WindowEvent::RedrawRequested => {
-                // ---- run VM and refresh framebuffer --------------------------
-                // for _ in 0..3 { // run multiple steps per frame
-                //     if !self.vm.cpu.halted {
-                //         self.vm.step();
+            WindowEvent::KeyboardInput {
+                event: KeyEvent {logical_key: key, state: ElementState::Pressed, .. },
+                ..
+            } => {
+                let keycode: u8 = match key.as_ref() {
+                    Key::Character("a") => 1,
+                    Key::Character("b") => 2,
+                    Key::Character("c") => 3,
+                    Key::Character("d") => 4,
+                    Key::Character("e") => 5,
+                    Key::Character("f") => 6,
+                    Key::Character("g") => 7,
+                    Key::Character("h") => 8,
+                    Key::Character("i") => 9,
+                    Key::Character("j") => 10,
+                    Key::Character("k") => 11,
+                    Key::Character("l") => 12,
+                    Key::Character("m") => 13,
+                    Key::Character("n") => 14,
+                    Key::Character("o") => 15,
+                    Key::Character("p") => 16,
+                    Key::Character("q") => 17,
+                    Key::Character("r") => 18,
+                    Key::Character("s") => 19,
+                    Key::Character("t") => 20,
+                    Key::Character("u") => 21,
+                    Key::Character("v") => 22,
+                    Key::Character("w") => 23,
+                    Key::Character("x") => 24,
+                    Key::Character("y") => 25,
+                    Key::Character("z") => 26,
+                    Key::Named(NamedKey::ArrowUp) => 27,
+                    Key::Named(NamedKey::ArrowDown) => 28,
+                    Key::Named(NamedKey::ArrowLeft) => 29,
+                    Key::Named(NamedKey::ArrowRight) => 30,
+                    Key::Character("1") => 31,
+                    Key::Character("2") => 32,
+                    Key::Character("3") => 33,
+                    Key::Character("4") => 34,
+                    Key::Character("5") => 35,
+                    Key::Character("6") => 36,
+                    Key::Character("7") => 37,
+                    Key::Character("8") => 38,
+                    Key::Character("9") => 39,
+                    Key::Character("0") => 40,
+                    _ => 0,
+                };
+                self.vm.mem.key_inject(keycode);
+                println!("Key pressed: {}", keycode);
+            },
 
-                //         // Debug: print when we hit certain addresses
-                //         if self.vm.cpu.regs[0] == 0x0C && self.vm.cpu.regs[1] == 0x00 {
-                //             println!("Halfway! R0={:02X}, R1={:02X}, PC={:04X}", 
-                //             self.vm.cpu.regs[0], self.vm.cpu.regs[1], self.vm.cpu.pc);
-                //         }
-                //     }
-                // }
+            WindowEvent::RedrawRequested => {
                 self.vm.step_many(100);
-                // self.vm.cpu.status();
+                if !self.vm.cpu.halted {
+                    self.vm.cpu.status();
+                    self.vm.mem.status();
+                }
                 
                 self.vm
                     .video
@@ -121,7 +164,11 @@ impl ApplicationHandler for App {
                             let fb_pixel_idx = byte_idx * 8 + bit_idx;
                             let x = fb_pixel_idx % 128;
                             let y = fb_pixel_idx / 128;
-                            let color = if (byte >> bit_idx) & 1 == 1 { 0xFFFFFFFF } else { 0xFF000000 };
+                            let color = if (byte >> (7 - bit_idx)) & 1 == 1 {
+                                0xFFFFFFFF
+                            } else {
+                                0xFF000000
+                            };
                             
                             // Draw scale x scale block
                             for dy in 0..scale {
@@ -290,7 +337,7 @@ current mem architecture:
 0x3F00–0x3FFF: Stack
 
 */
-fn load_bootloader(memory: &mut Mem) {
+fn load_bootloader(memory: &mut Bus) {
     // STARTS AT 0x00
     // initialize cpu state (registers, sp, etc)
     // clear ram
@@ -508,7 +555,7 @@ fn load_bootloader(memory: &mut Mem) {
 
 }
 
-static PROGRAM: &[u8] = &[
+static SCREEN_WHITE_PROGRAM: &[u8] = &[
     // set up r0 and r1 for vram
     0b0000_0100,
     0b1100_0000,
@@ -644,6 +691,297 @@ static PROGRAM: &[u8] = &[
 ];
 
 
+static MOUSE_PROGRAM: &[u8] = &[
+    // r0 and r1 are m1 (y?), m2 (x?) respectively; initialize @ 0, 0 (0x800, 0x07FF)
+    0b0000_0100,
+    0b1100_0000,
+    0b0000_1000,
+
+    0b0000_0100,
+    0b1100_1000,
+    0b0000_0000,
+    
+
+    // init r2 as all 1s, will move a line before i can figure out how to move 1 pixel
+    0b0000_0100,
+    0b1101_0000,
+    0b1111_1111,
+
+    // CORE LOOP: 0x409:
+
+    // check keyboard status (0x1000?)
+    // will do & 0000_0001 to check if a key is available:
+    
+
+    // put 0000_0001 into r3
+    0b0000_0100,
+    0b11_011_000,
+    0b0000_0001,
+    
+
+    // put address 0x1001 (0b0001_0000__0000_0001) into r4, r5
+    0b0000_0100,
+    0b1110_0000,
+    0b0001_0000,
+
+    0b0000_0100,
+    0b1110_1000,
+    0b0000_0001,
+
+    0b0001_1100, // AND op: compare m2 (r4, r5) w/ r3
+    0b0101_1100, // 011 is R3, 100 is R4
+
+    // COMP op of 0000_0001 w/ R3
+    0b0100_1100,
+    0b1101_1000,
+    0b0000_0001,
+
+    // jump not zero means we have a key to read
+
+    // jump zero means we don't have a key to read -> go back to core loop 0x409/0b100_0000_1001:
+    0b0011_0000,
+    0b1000_0000,
+    0b0000_0100, // means 0x409
+    0b0000_1001,
+
+    // otherwise, check key @ 0x1001 and, because we're doing arrow keys, subtract 27 (so an UP key will be 0)
+    // then do jump zeros and subtract until we reach the number ONE, then restart cuz its useless
+    
+    // put address 0x1002 (0b0001_0000__0000_0010) into r4, r5
+    0b0000_0100,
+    0b11_100_000,
+    0b0001_0000,
+
+    0b0000_0100,
+    0b11_101_000,
+    0b0000_0010,
+
+    // now put 27 into r6
+    0b0000_0100,
+    0b11_110_000,
+    0b0001_1011,
+
+    // now do m2 to r1 (R7)
+    0b0000_0100,
+    0b01_111_100,
+
+    // now do sub R6 from R7 ; r1 - r2 -> r1 = R7, r2 = R6
+    0b0000_1100,
+    0b00_111_110,
+
+    // set r0, r1 to black:
+    0b000001_01, // i2 to m1
+    0b00_000_000,
+    255,
+
+
+    // anyway, now if it's UP it'll be 0. put a jump not zero to dodge the next few instructions which adds 1 to R0
+    // instead, added skip; just skip a few bytes?
+    0b011100_00,
+    0b10_000_000,
+    5,
+
+    // sub 1 from R0 (3 bytes); fix later, but currently its addition so it doesnt ruin everything lol
+    0b000010_00,
+    0b11_000_000,
+    0b0000_0001,
+    // LATER JUMP TO SCREEN UPDATE FUNCTION (4 bytes)
+
+
+    // screen update function:
+    // set r0, r1 to white
+    0b000001_00, // i2 to m1
+    0b10_000_010,
+
+
+    // back to core loop?
+    0b001011_00,
+    0b10_000_000,
+    0b0000_0100, // means 0x409
+    0b0000_1001,
+
+
+
+
+
+
+    0b111111_00,
+
+
+    
+    
+// 0b1000_0000,
+// 0b0000_0100,
+
+
+];
+// broken af
+// hello world:
+
+static HELLOWORLD: &[u8] = &[
+    // draw h:
+    
+    // init R0 and R1 as 0x800
+    0b000001_00,
+    0b11_000_000,
+    0x09,
+
+    0b000001_00,
+    0b11_001_000,
+    0x00,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_000_00,
+
+    0b000001_00,
+    0b11_001_000,
+    0x10,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_0_111_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x20,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_0_101_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x30,
+
+    0b000001_01,
+    0b00_000_000,
+    0b111_0_111_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x40,
+
+    0b000001_01,
+    0b00_000_000,
+    0b101_0_100_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x50,
+
+    0b000001_01,
+    0b00_000_000,
+    0b101_0_111_0,
+
+    // NEXT BYTE
+
+
+    0b000001_00,
+    0b11_001_000,
+    0x01,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_0_100_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x11,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_0_100_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x21,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_0_100_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x31,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_0_100_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x41,
+
+    0b000001_01,
+    0b00_000_000,
+    0b100_0_100_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x51,
+
+    0b000001_01,
+    0b00_000_000,
+    0b110_0_110_0,
+
+
+    // NEXT BYTE (2)
+
+
+    0b000001_00,
+    0b11_001_000,
+    0x02,
+
+    0b000001_01,
+    0b00_000_000,
+    0b000_0_000_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x12,
+
+    0b000001_01,
+    0b00_000_000,
+    0b000_0_000_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x22,
+
+    0b000001_01,
+    0b00_000_000,
+    0b000_0_000_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x32,
+
+    0b000001_01,
+    0b00_000_000,
+    0b111_0_000_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x42,
+
+    0b000001_01,
+    0b00_000_000,
+    0b101_0_000_0,
+
+    0b000001_00,
+    0b11_001_000,
+    0x52,
+
+    0b000001_01,
+    0b00_000_000,
+    0b111_0_000_0,
+
+
+    0b111111_00,
+
+];
+
     
 
 
@@ -664,7 +1002,7 @@ static PROGRAM: &[u8] = &[
 
 //];
 
-fn load_program(memory: &mut Mem, bytes: &[u8]) {
+fn load_program(memory: &mut Bus, bytes: &[u8]) {
     let base = 0x400;
     for (i, byte) in bytes.iter().enumerate() {
         memory.set(base + i as u16, *byte);
@@ -673,11 +1011,14 @@ fn load_program(memory: &mut Mem, bytes: &[u8]) {
 
 
 fn main() {
-    // ----- sample program in memory -----------------------------------------
-    let mut memory = Mem::new();
+    
+    let keyb = Keyboard::new();
+    let ms = Mouse::new();
+
+    let mut memory = Bus::new(ms, keyb);
 
     load_bootloader(&mut memory);
-    load_program(&mut memory, PROGRAM);
+    load_program(&mut memory, HELLOWORLD);
 
     
 
@@ -685,7 +1026,7 @@ fn main() {
     // ----- build VM ---------------------------------------------------------
     let cpu = Cpu::new();
     let vc  = VideoController::new(128, 128, 0x800);
-    let vm  = Vm::new(memory, vc, cpu, Pointer { x: 0, y: 0 });
+    let vm  = Vm::new(memory, vc, cpu);
 
     // ----- spin up winit -----------------------------------------------------
     let event_loop = EventLoop::new().unwrap();

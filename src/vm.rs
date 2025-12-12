@@ -1,25 +1,23 @@
 use crate::cpu::Cpu;
-use crate::memory::Mem;
+use crate::bus::Bus;
 use crate::vc::VideoController;
-use crate::pointer::Pointer;
+use crate::device::{Mouse, Keyboard};
 
 
 
 
 pub struct Vm {
-    pub mem: Mem,
+    pub mem: Bus,
     pub cpu: Cpu,
     pub video: VideoController,
-    pub ptr: Pointer,
 }
 
 impl Vm {
-    pub fn new(mem: Mem, video: VideoController, cpu: Cpu, ptr: Pointer) -> Self {
+    pub fn new(mem: Bus, video: VideoController, cpu: Cpu) -> Self {
         Self {
             mem: mem,
             cpu: cpu,
             video: video,
-            ptr,
         }
     }
 
@@ -32,7 +30,7 @@ impl Vm {
             self.video.update_framebuffer(self.mem.get_range(self.video.vram_base, self.video.vram_base + self.video.framebuffer.len() as u16));
         }
         else {
-            println!("CPU halted at {}", self.cpu.pc);
+            // println!("CPU halted at {}", self.cpu.pc);
         }
     }
 

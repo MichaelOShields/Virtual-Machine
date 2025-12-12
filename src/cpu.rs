@@ -79,7 +79,7 @@ register: 000 001 -> R1 to R0
 
 
 */
-use crate::memory::Mem;
+use crate::bus::Bus;
 
 use crate::binary::{get_bits_lsb, get_bits_msb};
 
@@ -121,22 +121,22 @@ impl Cpu {
         self.pc += incs as u16;
     }
 
-    fn get_operand(&mut self, mem: &mut Mem) -> u8 {
+    fn get_operand(&mut self, mem: &mut Bus) -> u8 {
         return mem.get(self.pc + 0x02);
     }
 
-    fn push(&mut self, val: u8, mem: &mut Mem) {
+    fn push(&mut self, val: u8, mem: &mut Bus) {
         self.sp -= 1;
         mem.set(self.sp, val);
     }
 
-    fn pop(&mut self, mem: &mut Mem) -> u8 {
+    fn pop(&mut self, mem: &mut Bus) -> u8 {
         let v = mem.get(self.sp);
         self.sp += 1;
         return v;
     }
 
-    fn op_move(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_move(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         // println!("{}", reg);
         match mode {
             0_u16 => {
@@ -253,7 +253,7 @@ impl Cpu {
         self.flags.overflow = false;
     }
 
-    fn op_add(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_add(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -389,7 +389,7 @@ impl Cpu {
     }
 
 
-    fn op_sub(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_sub(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -493,7 +493,7 @@ impl Cpu {
     }
 
 
-    fn op_div(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_div(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -588,7 +588,7 @@ impl Cpu {
     }
 
 
-    fn op_mul(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_mul(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -693,7 +693,7 @@ impl Cpu {
 
 
 
-    fn op_mod(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_mod(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -776,7 +776,7 @@ impl Cpu {
         }
     }
 
-    fn op_and(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_and(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -860,7 +860,7 @@ impl Cpu {
     }
 
 
-    fn op_or(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_or(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -944,7 +944,7 @@ impl Cpu {
     }
 
 
-    fn op_xor(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_xor(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -1027,7 +1027,7 @@ impl Cpu {
         }
     }
 
-    fn op_not(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_not(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0_u16 => {
                 // r2 to r1
@@ -1108,7 +1108,7 @@ impl Cpu {
         }
     }
 
-    fn single_val(&mut self, mode: u16, reg: u16, mem: &mut Mem) -> u8 {
+    fn single_val(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> u8 {
         match mode {
             0b0000_u16 => {
                 // r
@@ -1146,7 +1146,7 @@ impl Cpu {
     }
 
 
-    fn op_j(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_j(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         // println!("Jumping from: {:016b}", self.pc);
         match mode {
             0b0000_u16 => {
@@ -1186,7 +1186,7 @@ impl Cpu {
     }
 
 
-    fn jump_cond(&mut self, mode: u16, reg: u16, mem: &mut Mem, boolean: bool) {
+    fn jump_cond(&mut self, mode: u16, reg: u16, mem: &mut Bus, boolean: bool) {
         if boolean {
             self.op_j(mode, reg, mem);
         }
@@ -1211,35 +1211,35 @@ impl Cpu {
     }
 
 
-    fn op_jz(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_jz(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         self.jump_cond(mode, reg, mem, self.flags.zero);
     }
 
-    fn op_jc(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_jc(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         self.jump_cond(mode, reg, mem, self.flags.carry);
     }
 
-    fn op_jo(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_jo(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         self.jump_cond(mode, reg, mem, self.flags.overflow);
     }
 
-    fn op_js(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_js(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         self.jump_cond(mode, reg, mem, self.flags.sign);
     }
-    fn op_jnz(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_jnz(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         self.jump_cond(mode, reg, mem, !self.flags.zero);
     }
 
-    fn op_jg(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_jg(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         self.jump_cond(mode, reg, mem, !self.flags.zero && !self.flags.sign);
     }
 
-    fn op_jl(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_jl(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         self.op_js(mode, reg, mem);
     }
 
 
-    fn op_comp(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_comp(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0b0000_u16 => {
                 // r2 to r1
@@ -1342,12 +1342,12 @@ impl Cpu {
         }
     }
 
-    fn op_push(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_push(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         let val: u8 = self.single_val(mode, reg, mem);
         self.push(val, mem);
     }
 
-    fn op_call(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_call(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
 
         let pos = self.pc.clone() + match mode {
             0b0000_u16 => 2, // r
@@ -1363,7 +1363,7 @@ impl Cpu {
     }
 
 
-    fn op_ret(&mut self, mem: &mut Mem) {
+    fn op_ret(&mut self, mem: &mut Bus) {
         let m2 = self.pop(mem);
         let m1 = self.pop(mem);
 
@@ -1371,7 +1371,7 @@ impl Cpu {
     }
 
 
-    fn op_pop(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_pop(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0b0000_u16 => {
                 // r1
@@ -1398,7 +1398,7 @@ impl Cpu {
     }
 
 
-    fn op_shl(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_shl(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0b0000_u16 => {
                 // r
@@ -1430,7 +1430,7 @@ impl Cpu {
     }
 
 
-    fn op_shr(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_shr(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0b0000_u16 => {
                 // r
@@ -1461,7 +1461,7 @@ impl Cpu {
         }
     }
 
-    fn op_sar(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_sar(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0b0000_u16 => {
                 // r
@@ -1500,7 +1500,7 @@ impl Cpu {
         }
     }
 
-    fn op_setsp(&mut self, mode: u16, reg: u16, mem: &mut Mem) {
+    fn op_setsp(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0b0000_u16 => {
                 // r
@@ -1542,8 +1542,40 @@ impl Cpu {
         }
     }
 
+    fn op_skip(&mut self, mode: u16, reg: u16, mem: &mut Bus) { // skip n byte instructions
+        // println!("Jumping from: {:016b}", self.pc);
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r = self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-    pub fn step(&mut self, mem: &mut Mem) { // 1 for did something, 0 for did nothing
+                self.increment_pc(2 + r);
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                self.increment_pc(2 + mem.get(m));
+
+            },
+            0b0010_u16 => {
+                // i
+                let i = self.get_operand(mem);
+
+                self.increment_pc(3 + i);
+            },
+            _ => println!("Not accounted for"),
+        }
+    }
+
+
+    pub fn step(&mut self, mem: &mut Bus) { // 1 for did something, 0 for did nothing
         let instruction: u16 =
         (mem.get(self.pc) as u16) << 8
         | ((mem.get(self.pc + 1) as u16));
@@ -1582,17 +1614,26 @@ impl Cpu {
             0b011001_u16 => {self.op_shr(mode, reg, mem); }, // LOGICAL SHIFT RIGHT
             0b011010_u16 => {self.op_sar(mode, reg, mem); }, // ARITHMETIC SHIFT RIGHT
             0b011011_u16 => {self.op_setsp(mode, reg, mem); }, // SET STACK POINTER
+            0b011100_u16 => {self.op_skip(mode, reg, mem); },
             0b111111_u16 => {self.halted = true; }, // HALT
-            _ => {println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:016b}", instruction, self.pc); },
+            _ => {
+                println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);
+                println!("Halting...");
+                self.halted = true;
+            },
         }
 
-        self.status();
+        // self.status();
         
     }
 
 
     pub fn status(&self) {
-        println!("Registers: {:?}", self.regs);
+        print!("Registers: [");
+        for i in 0..7 {
+            print!("{:08b},", self.regs[i]);
+        }
+        println!("{:08b}]", self.regs[7]);
         if self.halted {
             println!("Halted");
         }
