@@ -5,6 +5,8 @@ mod vc;
 mod vm;
 mod binary;
 mod device;
+mod assembler;
+
 
 use cpu::Cpu;
 use bus::Bus;
@@ -1009,8 +1011,14 @@ fn load_program(memory: &mut Bus, bytes: &[u8]) {
     }
 }
 
+const LEXING: bool = true; // debugging lexer
+
 
 fn main() {
+    if LEXING {
+        assembler::assem("src\\assemblycode.txt".to_string());
+        return;
+    }
     
     let keyb = Keyboard::new();
     let ms = Mouse::new();
