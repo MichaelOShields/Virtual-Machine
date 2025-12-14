@@ -868,6 +868,14 @@ impl Assembler {
 
     }
 
+    fn set_pc(&mut self, new_pc: u16) {
+        self.pc = new_pc;
+    }
+
+    fn inc_pc(&mut self, amt: u16) {
+        self.pc += amt;
+    }
+
     fn assemble_double_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
         let mut instrs: Vec<u8> = vec![]; 
         if let Stmt::DoubleOperation { opid, mode, dest, src } = op {
@@ -916,14 +924,13 @@ impl Assembler {
         let mut instructions: Vec<u8> = vec![];
         let mut first: Stmt = self.get_stmt()?;
         while first != Stmt::End {
-            let next_instructions: Option<Vec<u8>> = match first {
-                Stmt::DoubleOperation { opid, mode, dest, src } => Some(self.assemble_double_op(Stmt::DoubleOperation { opid, mode, dest, src })?),
-                _ => None,
+            let mut next_instructions: Vec<u8> = match first {
+                Stmt::DoubleOperation { opid, mode, dest, src } => self.assemble_double_op(Stmt::DoubleOperation { opid, mode, dest, src })?,
+                _ => return Err(AssemblerError { message: "Unexpected stmt".to_string() }),
             };
-            match next_instructions {
-                Some(mut i) => instructions.append(&mut i),
-                None => (),
-            }
+
+            self.inc_pc(next_instructions.len() as u16);
+            instructions.append(&mut next_instructions);
             
             for inst in instructions.clone() {
                 println!("instruction: {:08b}", inst);
