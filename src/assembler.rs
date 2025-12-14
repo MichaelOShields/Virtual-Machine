@@ -996,3 +996,4 @@ impl Assembler {
         return Ok(byte_segments);
     }
 }
+
