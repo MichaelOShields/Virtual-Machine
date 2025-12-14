@@ -2,13 +2,17 @@ use std::num::ParseIntError;
 use std::{fs, string};
 use std::collections::HashMap;
 
+use crate::binary::get_bits_msb;
+
 
 /*
 CORE IDEA:
 
 [OPERATION] [MODE] [REGS] [OPTIONAL IMMEDIATE]
 i.e.
-move rr r0 r1; -> moves r1 to r0
+move rr r0, r1; -> moves r1 to r0
+
+Returns Vec<Position, Instruction>
 
 
 */
@@ -376,7 +380,6 @@ pub enum DoubleMode {
     Rm,
     Ri,
     Mr,
-    Mi,
     Rr,
 }
 
@@ -498,7 +501,6 @@ impl Parser {
         double_modes.insert("rr".to_string(), DoubleMode::Rr);
         double_modes.insert("ri".to_string(), DoubleMode::Ri);
         double_modes.insert("mr".to_string(), DoubleMode::Mr);
-        double_modes.insert("mi".to_string(), DoubleMode::Mi);
 
         let mut ops: HashMap<String, OpKind> = HashMap::new();
         ops.insert("nop".to_string(), OpKind::Zero);
@@ -524,7 +526,7 @@ impl Parser {
         ops.insert("shr".to_string(), OpKind::Single);
         ops.insert("sar".to_string(), OpKind::Single);
 
-        ops.insert("setsp".to_string(), OpKind::Single);
+        ops.insert("ssp".to_string(), OpKind::Single);
         ops.insert("skip".to_string(), OpKind::Single);
 
 
@@ -643,12 +645,6 @@ impl Parser {
         return Ok(());
     }
 
-    fn basic_stmt(&mut self, expected_stmt: Stmt, expected_token: Token) -> Result<Stmt, ParserError> {
-        self.basic_token(expected_token)?;
-        Ok(expected_stmt)
-
-    }
-
     fn advance(&mut self) -> Result<(), ParserError> {
         let tok = self.parser_lexer.next_token()
             .map_err(|e| ParserError {
@@ -745,5 +741,137 @@ impl Parser {
         else {
             return Err(ParserError { message: format!("Couldn't parse token {:?}", self.current_token) });
         }
+    }
+}
+
+
+
+#[derive(Debug)]
+pub struct AssemblerError {
+    message: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Assembler {
+    pc: u16,
+    output: Vec<u8>,
+    labels: HashMap<String, u16>,
+    parser: Parser,
+}
+
+impl Assembler {
+    pub fn new(parser: Parser) -> Self {
+        Self {
+            pc: 0_u16,
+            output: vec![],
+            labels: HashMap::new(),
+            parser,
+        }
+    }
+
+    fn get_stmt(&mut self) -> Result<Stmt, AssemblerError> {
+        return Ok(match self.parser.next_stmt() {
+            Ok(s) => s,
+            Err(e) => return Err(AssemblerError { message: format!("Got ParserError {:?}", e) }),
+
+        });
+    }
+
+    fn opcode_from_opid(&mut self, opid: String) -> Result<u8, AssemblerError> {
+        return Ok(match opid.as_str() {
+            "nop"  => 0b000_000,
+            "mov"  => 0b000_001,
+            "add"  => 0b000_010,
+            "sub"  => 0b000_011,
+            "mul"  => 0b000_100,
+            "div"  => 0b000_101,
+            "mod"  => 0b000_110,
+            "and"  => 0b000_111,
+            "or"   => 0b001_000,
+            "xor"  => 0b001_001,
+            "not"  => 0b001_010,
+            "jmp"  => 0b001_011,
+            "jz"   => 0b001_100,
+            "jc"   => 0b001_101,
+            "jo"   => 0b001_110,
+            "js"   => 0b001_111,
+            "jnz"  => 0b010_000,
+            "jg"   => 0b010_001,
+            "jl"   => 0b010_010,
+            "cmp"  => 0b010_011,
+            "push" => 0b010_100,
+            "pop"  => 0b010_101,
+            "call" => 0b010_110,
+            "ret"  => 0b010_111,
+            "shl"  => 0b011_000,
+            "shr"  => 0b011_001,
+            "sar"  => 0b011_010,
+            "ssp"  => 0b011_011, // set stack pointer
+            "skip" => 0b011_100,
+            "hlt"  => 0b111_111,
+            _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
+        });
+    }
+
+    fn dbmode_convert(&mut self, mode: DoubleMode) -> Result<u8, AssemblerError> {
+        return Ok(match mode {
+            DoubleMode::Rr => 0b0000,
+            DoubleMode::Rm => 0b0001,
+            DoubleMode::Mr => 0b0010,
+            DoubleMode::Ri => 0b0011,
+            _ => return Err(AssemblerError { message: "Unable to parse mode".to_string() }),
+        });
+    }
+
+    fn register_from_dest(&mut self, dest: Operand) -> Result<u8, AssemblerError> {
+
+    }
+
+    fn assemble_double_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
+        let mut instrs: Vec<u8> = vec![]; 
+        if let Stmt::DoubleOperation { opid, mode, dest, src } = op {
+            let mut instr1: u8 = 0;
+            instr1 |= self.opcode_from_opid(opid)? << 2;
+            let modebinary = self.dbmode_convert(mode.clone())?;
+            let mode1: u8 = get_bits_msb(modebinary as u16, 0, 1) as u8;
+            let mode2: u8 = get_bits_msb(modebinary as u16, 2, 3) as u8;
+            instr1 |= mode1;
+            let mut instr2: u8 = 0;
+            instr2 |= mode2 as u8;
+
+            let mut reg1: u8 = 0;
+            let mut reg2: u8 = 0;
+
+            if mode == DoubleMode::Rr {
+                reg1
+            }
+
+
+
+            instrs.push(instr1);
+        }
+        else {
+            return Err(AssemblerError { message: "Unable to parse DoubleOperation".to_string() });
+        }
+        return Ok(instrs);
+    }
+
+
+    pub fn assemble(&mut self) -> Result<(Vec<u8>, HashMap<String, u16>), AssemblerError>{
+        let mut instructions: Vec<u8> = vec![];
+        let mut first: Stmt = self.get_stmt()?;
+        while first != Stmt::End {
+            let next_instructions: Option<Vec<u8>> = match first {
+                Stmt::DoubleOperation { opid, mode, dest, src } => Some(self.assemble_double_op(Stmt::DoubleOperation { opid, mode, dest, src })?),
+                _ => None,
+            };
+            match next_instructions {
+                Some(mut i) => instructions.append(&mut i),
+                None => (),
+            }
+            first = self.get_stmt()?;
+        }
+
+        return Ok((instructions, self.labels.clone()));
     }
 }

@@ -53,11 +53,6 @@ impl Bus {
         return &self.ram[a as usize..b as usize];
     }
 
-    pub fn set_range(&mut self, a: u16, b: u16, src: u8) {
-        let slice = &mut self.ram[a as usize..b as usize];
-        slice.fill(src);
-    }
-
     pub fn key_inject(&mut self, key: u8) {
         self.keyboard.inject_key(key);
     }

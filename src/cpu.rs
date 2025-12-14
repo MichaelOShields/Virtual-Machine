@@ -1,5 +1,3 @@
-use std::result;
-
 /*
 
 6 bits opcode
@@ -1500,7 +1498,7 @@ impl Cpu {
         }
     }
 
-    fn op_setsp(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
+    fn op_ssp(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
         match mode {
             0b0000_u16 => {
                 // r
@@ -1613,7 +1611,7 @@ impl Cpu {
             0b011000_u16 => {self.op_shl(mode, reg, mem); }, // SHIFT LEFT
             0b011001_u16 => {self.op_shr(mode, reg, mem); }, // LOGICAL SHIFT RIGHT
             0b011010_u16 => {self.op_sar(mode, reg, mem); }, // ARITHMETIC SHIFT RIGHT
-            0b011011_u16 => {self.op_setsp(mode, reg, mem); }, // SET STACK POINTER
+            0b011011_u16 => {self.op_ssp(mode, reg, mem); }, // SET STACK POINTER
             0b011100_u16 => {self.op_skip(mode, reg, mem); },
             0b111111_u16 => {self.halted = true; }, // HALT
             _ => {
