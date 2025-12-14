@@ -2,7 +2,7 @@ use std::num::ParseIntError;
 use std::{fs, string};
 use std::collections::HashMap;
 
-use crate::binary::get_bits_msb;
+use crate::binary::{get_bits_lsb, get_bits_msb};
 
 
 /*
@@ -339,21 +339,24 @@ pub fn assem(path: String) {
 
     let mut parser = Parser::new(lex);
 
-    let mut first = match parser.next_stmt() {
-            Ok(s) => s,
-            Err(e) => panic!("Got PE {:?}", e),
-        };
+    let mut assembler = Assembler::new(parser);
+    assembler.assemble();
+
+    // let mut first = match parser.next_stmt() {
+    //         Ok(s) => s,
+    //         Err(e) => panic!("Got PE {:?}", e),
+    //     };
     // println!("First: {:?}", first);
 
-    while first != Stmt::End {
-        if first != Stmt::Newline {
-            println!("Stmt: {:?}", first);  
-        };
-        first = match parser.next_stmt() {
-            Ok(s) => s,
-            Err(e) => {println!("Error: {:?}", e); break;}
-        };
-    }
+    // while first != Stmt::End {
+    //     if first != Stmt::Newline {
+    //         println!("Stmt: {:?}", first);  
+    //     };
+    //     first = match parser.next_stmt() {
+    //         Ok(s) => s,
+    //         Err(e) => {println!("Error: {:?}", e); break;}
+    //     };
+    // }
 
     // let mut first = match lex.next_token() {
     //     Ok(t) => t,
@@ -745,6 +748,7 @@ impl Parser {
 }
 
 
+// assembler will reserve R6 and R7 for under the hood memory ops
 
 #[derive(Debug)]
 pub struct AssemblerError {
@@ -823,7 +827,44 @@ impl Assembler {
         });
     }
 
-    fn register_from_dest(&mut self, dest: Operand) -> Result<u8, AssemblerError> {
+    fn register_from_operand(&mut self, dest: Operand) -> Result<u8, AssemblerError> {
+        return Ok(match dest {
+            Operand::Register(num) => num,
+            _ => return Err(AssemblerError { message: "Expected register".to_string() })
+        });
+    }
+
+    fn mem_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>), AssemblerError> { // result is register to grab mem addr, vec<u8> is just loading the mem addr into R6 and R7
+        let reg: u8 = 6;
+        let mut instrs: Vec<u8> = vec![];
+        match mem {
+            Operand::Immediate(e) => match e {
+                Expr::Num(numex) => match numex {
+                    NumExpr::Reference(r) => {
+                        if !self.labels.contains_key(&r) {
+                            return Err(AssemblerError { message: "Attempted to reference a nonexistent label".to_string() })
+                        };
+                        let mem_addr: u16 = *self.labels.get(&r).unwrap();
+                        let m1: u8 = get_bits_msb(mem_addr, 0, 7) as u8;
+                        let m2: u8 = get_bits_lsb(mem_addr, 0, 7) as u8;
+                        let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))) };
+                        let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))) };
+                        let mut loadingm1 = self.assemble_double_op(movem1toreg6stmt)?;
+                        let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
+                        instrs.append(&mut loadingm1);
+                        instrs.append(&mut loadingm2);
+
+                        return Ok((reg, instrs));
+
+
+
+                    },
+                    _ => return Err(AssemblerError { message: "Got unexpected raw number when parsing memory operand".to_string() })
+                },
+                _ => return Err(AssemblerError { message: "Received unexpected immediate operand expression type.".to_string() })
+            },
+            Operand::Register(n) => {return Ok((n, vec![]))},
+        };
 
     }
 
@@ -838,21 +879,35 @@ impl Assembler {
             instr1 |= mode1;
             let mut instr2: u8 = 0;
             instr2 |= mode2 as u8;
+            instr2 <<= 6;
 
             let mut reg1: u8 = 0;
             let mut reg2: u8 = 0;
 
             if mode == DoubleMode::Rr {
-                reg1
+                reg1 = self.register_from_operand(dest)?;
+                reg2 = self.register_from_operand(src)?;
             }
+            else if mode == DoubleMode::Rm {
+                reg1 = self.register_from_operand(dest)?;
+                let (register2, mut setup_instrs) = self.mem_from_operand(src)?;
+                reg2 = register2;
+                instrs.append(&mut setup_instrs);
+            }
+
+            instr2 |= reg1 << 3;
+            instr2 |= reg2;
+
 
 
 
             instrs.push(instr1);
+            instrs.push(instr2);
         }
         else {
             return Err(AssemblerError { message: "Unable to parse DoubleOperation".to_string() });
         }
+
         return Ok(instrs);
     }
 
@@ -868,6 +923,10 @@ impl Assembler {
             match next_instructions {
                 Some(mut i) => instructions.append(&mut i),
                 None => (),
+            }
+            
+            for inst in instructions.clone() {
+                println!("instruction: {:08b}", inst);
             }
             first = self.get_stmt()?;
         }

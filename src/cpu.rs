@@ -191,21 +191,6 @@ impl Cpu {
 
                 self.increment_pc(3); // uses operand -> 3 bytes
             },
-            0b0100_u16 => {
-                // i2 to m1
-                // dest src
-
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1 = (m11 as u16) << 8 | (m12 as u16);
-
-                mem.set(m1, i2);
-
-                self.increment_pc(3);
-
-            },
             _ => println!("Not accounted for"),
         };
     }   
