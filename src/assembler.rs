@@ -433,6 +433,13 @@ pub enum Expr {
 
 }
 
+#[derive(Debug, PartialEq)]
+pub enum OpKind {
+    Double,
+    Single,
+    Zero,
+}
+
 
 #[derive(Debug, PartialEq)]
 pub enum Stmt {
@@ -446,6 +453,9 @@ pub enum Stmt {
         opid: String,
         mode: SingleMode,
         operand: Operand,
+    },
+    ZeroOperation {
+        opid: String,
     },
     Signal {
         name: String,
@@ -468,17 +478,18 @@ pub struct ParserError {
 pub struct Parser {
     parser_lexer: Lexer,
     current_token: Token,
-    static_modes: HashMap<char, SingleMode>,
+    single_modes: HashMap<char, SingleMode>,
     double_modes: HashMap<String, DoubleMode>,
+    ops: HashMap<String, OpKind>,
 }
 
 impl Parser {
     pub fn new(mut passed_lex: Lexer) -> Self {
         let first = passed_lex.next_token().unwrap();
-        let mut static_modes: HashMap<char, SingleMode> = HashMap::new();
-        static_modes.insert('r', SingleMode::R);
-        static_modes.insert('m', SingleMode::M);
-        static_modes.insert('i', SingleMode::I);
+        let mut single_modes: HashMap<char, SingleMode> = HashMap::new();
+        single_modes.insert('r', SingleMode::R);
+        single_modes.insert('m', SingleMode::M);
+        single_modes.insert('i', SingleMode::I);
 
         let mut double_modes: HashMap<String, DoubleMode> = HashMap::new();
         double_modes.insert("rm".to_string(), DoubleMode::Rm);
@@ -486,11 +497,17 @@ impl Parser {
         double_modes.insert("ri".to_string(), DoubleMode::Ri);
         double_modes.insert("mr".to_string(), DoubleMode::Mr);
         double_modes.insert("mi".to_string(), DoubleMode::Mi);
+
+        let mut ops: HashMap<String, OpKind> = HashMap::new();
+        ops.insert("mov".to_string(), OpKind::Double);
+        ops.insert("jmp".to_string(), OpKind::Single);
+        ops.insert("add".to_string(), OpKind::Double);
         Self {
             parser_lexer: passed_lex,
             current_token: first,
-            static_modes,
+            single_modes,
             double_modes,
+            ops,
         }
     }
 
@@ -536,22 +553,41 @@ impl Parser {
     }
 
     fn parse_double_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
-        match self.expect_ident() {
-            Ok(s) => match s {
-                _c if s == "mov" => println!("Correct mov identifier"),
-                _ => return Err(ParserError { message: "Expected identifier 'mov'".to_string() })
-            },
-            Err(e) => return Err(e),
-        };
+        self.expect_ident()?; // opid
         let mode_ident = self.expect_ident()?;
         println!("mode: {:?}", mode_ident);
         let mode = match self.double_modes.get(&mode_ident) {
             Some(m) => m,
             None => return Err(ParserError { message: "Unable to get mode".to_string() }),
         }.clone();
-        let dest = self.expect_operand()?;
-        let src = self.expect_operand()?;
+        let dest = self.expect_operand()
+            .map_err(|_| ParserError { message: "Expected dest operand".into() })?;
+        let src = self.expect_operand()
+            .map_err(|_| ParserError { message: "Expected src operand".into() })?;
         return Ok(Stmt::DoubleOperation { opid, mode, dest, src })
+    }
+
+    fn parse_single_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
+        self.expect_ident()?; // opid
+        let mode_ident = self.expect_ident()?;
+        println!("mode: {:?}", mode_ident);
+        let mode = match self.single_modes.get(match (&mode_ident).as_str() {
+            "r" => &'r',
+            "i" => &'i',
+            "m" => &'m',
+            _ => return Err(ParserError { message: format!("Received unexpected mode {:?}", mode_ident) }),
+        }) {
+            Some(m) => m,
+            None => return Err(ParserError { message: "Unable to get mode".to_string() }),
+        }.clone();
+        let operand = self.expect_operand()
+            .map_err(|_| ParserError { message: "Expected single operand".into() })?;
+        return Ok(Stmt::SingleOperation { opid, mode, operand })
+    }
+
+    fn parse_zero_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
+        self.expect_ident()?; // opid
+        return Ok(Stmt::ZeroOperation { opid })
     }
 
     fn basic_token(&mut self, expected: Token) -> Result<(), ParserError> {
@@ -618,19 +654,20 @@ impl Parser {
             return Ok(Stmt::Newline);
         }
         else if let Token::Ident(ref s) = self.current_token {
-            if s == "mov" || s == "add" {
-                return Ok(self.parse_double_op(s.to_string())?);
+            match self.ops.get(s.as_str()) {
+                Some(OpKind::Double) => return Ok(self.parse_double_op(s.clone())?),
+                Some(OpKind::Single) => return Ok(self.parse_single_op(s.clone())?),
+                Some(OpKind::Zero) => return Ok(self.parse_zero_op(s.clone())?),
+                None => (),
+            };
+            if matches!(self.parser_lexer.peek_next_token().unwrap(), Token::COLON) {
+                let name = s.clone();
+                self.advance()?;
+                self.basic_token(Token::COLON)?;
+                return Ok(Stmt::Label(name));
             }
             else {
-                if matches!(self.parser_lexer.peek_next_token().unwrap(), Token::COLON) {
-                    let name = s.clone();
-                    self.advance()?;
-                    self.basic_token(Token::COLON)?;
-                    return Ok(Stmt::Label(name));
-                }
-                else {
-                    return Err(ParserError { message: format!("Couldn't identify ident {:?}",s   ) });
-                }
+                return Err(ParserError { message: format!("Couldn't identify ident {:?}",s   ) });
             }
         }
         else if let Token::PERIOD = self.current_token {
