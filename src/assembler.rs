@@ -340,7 +340,18 @@ pub fn assem(path: String) {
     let mut parser = Parser::new(lex);
 
     let mut assembler = Assembler::new(parser);
-    assembler.assemble();
+    let assembled = assembler.assemble();
+
+    match assembled {
+        Ok(a) => {
+            for idx in a.keys() {
+                for inst in a.get(idx).unwrap() {
+                    println!("Instruction ({:x}): {:08b}", idx, inst);
+                }
+            }
+        }
+        Err(e) => println!("Error: {:?}", e),
+    }
 
     // let mut first = match parser.next_stmt() {
     //         Ok(s) => s,
@@ -758,6 +769,7 @@ pub struct AssemblerError {
 #[derive(Debug, PartialEq)]
 pub struct Assembler {
     pc: u16,
+    current_pos: u16,
     output: Vec<u8>,
     labels: HashMap<String, u16>,
     parser: Parser,
@@ -767,6 +779,7 @@ impl Assembler {
     pub fn new(parser: Parser) -> Self {
         Self {
             pc: 0_u16,
+            current_pos: 0_u16,
             output: vec![],
             labels: HashMap::new(),
             parser,
@@ -919,25 +932,67 @@ impl Assembler {
         return Ok(instrs);
     }
 
+    fn get_label(&mut self, label: String) -> Result<u16, AssemblerError> {
+        return Ok(match self.labels.get(&label) {
+            Some(u) => *u,
+            None => return Err(AssemblerError { message: "Attempted to get nonexistent label".to_string() })
+        });
+    }
 
-    pub fn assemble(&mut self) -> Result<(Vec<u8>, HashMap<String, u16>), AssemblerError>{
-        let mut instructions: Vec<u8> = vec![];
+    fn label(&mut self, label: String) -> Result<Vec<u8>, AssemblerError> { // will return a blank u8 vec
+        self.labels.insert(label, self.pc);
+        return Ok(vec![]);
+    }
+
+    fn parse_signal(&mut self, name: String, args: Vec<Expr>) -> Result<Vec<u8>, AssemblerError> {
+        if name == "org" {
+            if args.is_empty() || args.len() > 1 {
+                return Err(AssemblerError { message: "org signal contained too many args".to_string() });
+            }
+            else {
+                match &args[0] {
+                    Expr::Num(n) => match n {
+                        NumExpr::Reference(s) => {
+                            self.current_pos = self.get_label(s.to_string())?;
+                        },
+                        NumExpr::Raw(i) => {self.current_pos = *i as u16;},
+
+                    },
+                    _ => return Err(AssemblerError { message: "org signal received incorrect arg".to_string() })
+                }
+            }
+        }
+        return Ok(vec![]);
+    }
+
+
+    pub fn assemble(&mut self) -> Result<HashMap<u16, Vec<u8>>, AssemblerError>{
+
+        let mut byte_segments: HashMap<u16, Vec<u8>> = HashMap::new();
+        self.current_pos = self.pc;
+
         let mut first: Stmt = self.get_stmt()?;
         while first != Stmt::End {
-            let mut next_instructions: Vec<u8> = match first {
+            println!("Stmt: {:?}", first);
+            let next_instructions: Vec<u8> = match first {
                 Stmt::DoubleOperation { opid, mode, dest, src } => self.assemble_double_op(Stmt::DoubleOperation { opid, mode, dest, src })?,
+                Stmt::Label(s) => self.label(s)?,
+                Stmt::End => vec![],
+                Stmt::Comment(_c) => vec![],
+                Stmt::Signal { name, args } => self.parse_signal(name, args)?,
+                Stmt::Newline => vec![],
                 _ => return Err(AssemblerError { message: "Unexpected stmt".to_string() }),
             };
-
-            self.inc_pc(next_instructions.len() as u16);
-            instructions.append(&mut next_instructions);
-            
-            for inst in instructions.clone() {
-                println!("instruction: {:08b}", inst);
+            if !next_instructions.is_empty() {
+                for inst in next_instructions.clone() {
+                    println!("Instruction ({:x}): {:08b}", self.current_pos, inst);
+                }
+                self.inc_pc(next_instructions.len() as u16);
+                byte_segments.entry(self.current_pos).or_insert_with(||Vec::new()).extend(next_instructions);
             }
             first = self.get_stmt()?;
         }
 
-        return Ok((instructions, self.labels.clone()));
+        return Ok(byte_segments);
     }
 }
