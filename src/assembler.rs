@@ -658,40 +658,43 @@ impl Parser {
         Ok(())
     }
 
-    fn parse_org(&mut self) -> Result<Stmt, ParserError> {
-        let addr: Expr = match &self.current_token {
-            Token::Ident(s) => Expr::Num(NumExpr::Reference(s.to_string())),
-            Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
-            Token::Hex(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
-                Ok(i) => i,
-                Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
-            })),
-            Token::Binary(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
-                Ok(i) => i,
-                Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
-            })),
-            _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
-        };
-        self.advance()?;
-        return Ok(Stmt::Signal { name: "org".to_string(), args: vec![addr] });
+    fn taking_next_args(&mut self) -> Result<bool, ParserError> {
+        return Ok(match self.current_token {
+            
+            Token::EOF => false,
+            Token::Comment(_) => false,
+            Token::NEWLINE => false,
+            _ => true,
+        });
     }
 
-    fn parse_byte(&mut self) -> Result<Stmt, ParserError> {
-        let addr: Expr = match &self.current_token {
-            Token::Ident(s) => Expr::Num(NumExpr::Reference(s.to_string())),
-            Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
-            Token::Hex(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
-                Ok(i) => i,
-                Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
-            })),
-            Token::Binary(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
-                Ok(i) => i,
-                Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
-            })),
-            _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
+    fn parse_sig(&mut self, sigid: String) -> Result<Stmt, ParserError> {
+        let mut args: Vec<Expr> = vec![];
+        let mut taking_args = self.taking_next_args()?;
+
+        while taking_args {
+            let vectok: Expr = match &self.current_token {
+                Token::Ident(s) => Expr::Num(NumExpr::Reference(s.to_string())),
+                Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
+                Token::Hex(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
+                    Ok(i) => i,
+                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+                })),
+                Token::Binary(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
+                    Ok(i) => i,
+                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+                })),
+                _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
+            };
+            self.advance()?;
+            args.push(vectok);
+            match self.basic_token(Token::COMMA) {
+                Ok(()) => (),
+                Err(_e) => break,
+            }
         };
-        self.advance()?;
-        return Ok(Stmt::Signal { name: "byte".to_string(), args: vec![addr] });
+        
+        return Ok(Stmt::Signal { name: sigid, args });
     }
 
 
@@ -702,11 +705,7 @@ impl Parser {
             _ => return Err(ParserError { message: format!("Expected signal identifier, got {:?}", self.current_token) })
         };
         self.advance()?;
-        return Ok(match sigid.as_str() {
-            "org" => self.parse_org()?,
-            "byte" => self.parse_byte()?,
-            _ => return Err(ParserError { message: format!("Couldn't parse signal {:?}", sigid) }),
-        });
+        return Ok(self.parse_sig(sigid.to_string())?);
     }
 
     pub fn next_stmt(&mut self) -> Result<Stmt, ParserError> {
