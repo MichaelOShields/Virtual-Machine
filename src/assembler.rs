@@ -342,7 +342,9 @@ pub fn assem(path: String) {
     // println!("First: {:?}", first);
 
     while first != Stmt::End {
-        println!("Stmt: {:?}", first);
+        if first != Stmt::Newline {
+            println!("Stmt: {:?}", first);  
+        };
         first = match parser.next_stmt() {
             Ok(s) => s,
             Err(e) => {println!("Error: {:?}", e); break;}
@@ -499,9 +501,49 @@ impl Parser {
         double_modes.insert("mi".to_string(), DoubleMode::Mi);
 
         let mut ops: HashMap<String, OpKind> = HashMap::new();
-        ops.insert("mov".to_string(), OpKind::Double);
+        ops.insert("nop".to_string(), OpKind::Zero);
+        ops.insert("ret".to_string(), OpKind::Zero);
+        ops.insert("hlt".to_string(), OpKind::Zero);
+
+        ops.insert("not".to_string(), OpKind::Single);
+
         ops.insert("jmp".to_string(), OpKind::Single);
+        ops.insert("jz".to_string(), OpKind::Single);
+        ops.insert("jc".to_string(), OpKind::Single);
+        ops.insert("jo".to_string(), OpKind::Single);
+        ops.insert("js".to_string(), OpKind::Single);
+        ops.insert("jnz".to_string(), OpKind::Single);
+        ops.insert("jg".to_string(), OpKind::Single);
+        ops.insert("jl".to_string(), OpKind::Single);
+
+        ops.insert("push".to_string(), OpKind::Single);
+        ops.insert("pop".to_string(), OpKind::Single);
+        ops.insert("call".to_string(), OpKind::Single);
+
+        ops.insert("shl".to_string(), OpKind::Single);
+        ops.insert("shr".to_string(), OpKind::Single);
+        ops.insert("sar".to_string(), OpKind::Single);
+
+        ops.insert("setsp".to_string(), OpKind::Single);
+        ops.insert("skip".to_string(), OpKind::Single);
+
+
+        ops.insert("mov".to_string(), OpKind::Double);
+
         ops.insert("add".to_string(), OpKind::Double);
+        ops.insert("sub".to_string(), OpKind::Double);
+        ops.insert("mul".to_string(), OpKind::Double);
+        ops.insert("div".to_string(), OpKind::Double);
+        ops.insert("mod".to_string(), OpKind::Double);
+
+        ops.insert("and".to_string(), OpKind::Double);
+        ops.insert("or".to_string(), OpKind::Double);
+        ops.insert("xor".to_string(), OpKind::Double);
+
+        ops.insert("cmp".to_string(), OpKind::Double);
+
+
+
         Self {
             parser_lexer: passed_lex,
             current_token: first,
@@ -555,13 +597,14 @@ impl Parser {
     fn parse_double_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
         self.expect_ident()?; // opid
         let mode_ident = self.expect_ident()?;
-        println!("mode: {:?}", mode_ident);
+        // println!("mode: {:?}", mode_ident);
         let mode = match self.double_modes.get(&mode_ident) {
             Some(m) => m,
             None => return Err(ParserError { message: "Unable to get mode".to_string() }),
         }.clone();
         let dest = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected dest operand".into() })?;
+        self.basic_token(Token::COMMA)?;
         let src = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected src operand".into() })?;
         return Ok(Stmt::DoubleOperation { opid, mode, dest, src })
@@ -570,7 +613,7 @@ impl Parser {
     fn parse_single_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
         self.expect_ident()?; // opid
         let mode_ident = self.expect_ident()?;
-        println!("mode: {:?}", mode_ident);
+        // println!("mode: {:?}", mode_ident);
         let mode = match self.single_modes.get(match (&mode_ident).as_str() {
             "r" => &'r',
             "i" => &'i',
@@ -606,16 +649,6 @@ impl Parser {
 
     }
 
-    fn parse_org(&mut self) -> Result<Stmt, ParserError> {
-        let addr: Expr = match &self.current_token {
-            Token::Ident(s) => Expr::Num(NumExpr::Reference(s.to_string())),
-            Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
-            _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
-        };
-        self.advance()?;
-        return Ok(Stmt::Signal { name: "org".to_string(), args: vec![addr] });
-    }
-
     fn advance(&mut self) -> Result<(), ParserError> {
         let tok = self.parser_lexer.next_token()
             .map_err(|e| ParserError {
@@ -623,6 +656,42 @@ impl Parser {
             })?;
         self.current_token = tok;
         Ok(())
+    }
+
+    fn parse_org(&mut self) -> Result<Stmt, ParserError> {
+        let addr: Expr = match &self.current_token {
+            Token::Ident(s) => Expr::Num(NumExpr::Reference(s.to_string())),
+            Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
+            Token::Hex(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
+                Ok(i) => i,
+                Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+            })),
+            Token::Binary(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
+                Ok(i) => i,
+                Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+            })),
+            _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
+        };
+        self.advance()?;
+        return Ok(Stmt::Signal { name: "org".to_string(), args: vec![addr] });
+    }
+
+    fn parse_byte(&mut self) -> Result<Stmt, ParserError> {
+        let addr: Expr = match &self.current_token {
+            Token::Ident(s) => Expr::Num(NumExpr::Reference(s.to_string())),
+            Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
+            Token::Hex(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
+                Ok(i) => i,
+                Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+            })),
+            Token::Binary(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
+                Ok(i) => i,
+                Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+            })),
+            _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
+        };
+        self.advance()?;
+        return Ok(Stmt::Signal { name: "byte".to_string(), args: vec![addr] });
     }
 
 
@@ -635,6 +704,7 @@ impl Parser {
         self.advance()?;
         return Ok(match sigid.as_str() {
             "org" => self.parse_org()?,
+            "byte" => self.parse_byte()?,
             _ => return Err(ParserError { message: format!("Couldn't parse signal {:?}", sigid) }),
         });
     }
