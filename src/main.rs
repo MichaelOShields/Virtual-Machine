@@ -1014,6 +1014,7 @@ fn load_program(memory: &mut Bus, bytes: &[u8]) {
 const LEXING: bool = true; // debugging lexer
 
 
+
 fn main() {
     if LEXING {
         assembler::assem("src\\assemblycode.txt".to_string());

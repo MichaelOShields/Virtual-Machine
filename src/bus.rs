@@ -19,7 +19,7 @@ impl Bus {
             ram: [0; 16384],
             mouse,
             keyboard,
-            mmio_range: 0x1001..0x10FF,
+            mmio_range: 0x1000..0x10FF,
         }
     }
 
@@ -37,8 +37,8 @@ impl Bus {
         match address {
 
             // Keyboard
-            0x1001 => {return self.keyboard.status()},
-            0x1002 => {println!("Popping key"); return self.keyboard.pop_key();},
+            0x1000 => {return self.keyboard.status()},
+            0x1001 => {println!("Popping key"); return self.keyboard.pop_key();},
             _ => {println!("Unaccounted-for MMIO call"); return 0;},
         };
     }
