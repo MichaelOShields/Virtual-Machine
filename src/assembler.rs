@@ -396,10 +396,18 @@ pub enum BinaryOp {
     Div,
     Mul,
 }
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Function {
+    Hi ( NumExpr ),  // high byte of mem addr
+    Lo ( NumExpr ), // low byte of mem addr
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum NumExpr {
     Raw ( i64 ),
     Reference ( String ),
+    Function ( Box<Function> ),
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operand {
@@ -576,13 +584,75 @@ impl Parser {
         name[1..].parse::<u8>().ok()
     }
 
+    fn function_from_ident(&mut self, ident: &str) -> Result<Function, ParserError> {
+        return Ok(match ident {
+            "hi" => {
+                let expr = self.expect_numexpr()?;
+                self.basic_token(Token::RPAREN)?;
+                Function::Hi(expr)
+            },
+            "lo" => {
+                let expr = self.expect_numexpr()?;
+                self.basic_token(Token::RPAREN)?;
+                Function::Lo(expr)
+            },
+            _ => return Err(ParserError { message: "Couldn't understand function".to_string() }),
+        })
+    }
+
+    fn expect_numexpr(&mut self) -> Result<NumExpr, ParserError> {
+        return Ok(match &self.current_token {
+            Token::Ident(name) => { // Try register, otherwise is immediate reference
+
+                let expr = NumExpr::Reference(name.clone());
+                self.advance()?;
+                expr
+            },
+            Token::Int(val) => { // Immediate value
+                let expr = NumExpr::Raw(*val);
+                self.advance()?;
+                expr
+            },
+            Token::Hex(h) => {
+                let expr = NumExpr::Raw(match i64::from_str_radix(h, 16) {
+                    Ok(i) => i,
+                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+                });
+                self.advance()?;
+                expr
+            },
+            Token::Binary(h) => {
+                let expr = NumExpr::Raw(match i64::from_str_radix(h, 2) {
+                    Ok(i) => i,
+                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+                });
+                self.advance()?;
+                expr
+            },
+            _ => return Err(ParserError { message: format!("Couldn't understand numexpr {:?}", self.current_token) }),
+        });
+    }
+
 
     fn expect_operand(&mut self) -> Result<Operand, ParserError> {
         match &self.current_token {
             Token::Ident(name) => { // Try register, otherwise is immediate reference
+
                 if let Some(reg) = Self::parse_register(name) {
                     self.advance()?;
                     return Ok(Operand::Register(reg));
+                }
+                else if matches!(self.parser_lexer.peek_next_token().unwrap(), Token::LPAREN) {
+                    let name = name.clone();
+                    self.advance()?;
+                    self.basic_token(Token::LPAREN)?;
+
+                    let func = self.function_from_ident(&name)?;
+
+                    return Ok(Operand::Immediate(Expr::Num(NumExpr::Function(Box::from(func)))));
+
+
+
                 }
                 else {
                     let expr = Expr::Num(NumExpr::Reference(name.clone()));
@@ -726,6 +796,13 @@ impl Parser {
         return Ok(Stmt::Signal { name: sigid, args });
     }
 
+
+    fn peek_token(&mut self) -> Result<Token, ParserError> {
+        return Ok(match self.parser_lexer.peek_next_token() {
+            Ok(t) => t,
+            Err(e) => return Err(ParserError { message: format!("Got LexerError {:?}", e) }),
+        })
+    }
 
     fn parse_signal(&mut self) -> Result<Stmt, ParserError> {
         self.basic_token(Token::PERIOD)?;
@@ -898,6 +975,8 @@ impl Assembler {
         let mem_addr = match numexpr {
             NumExpr::Reference(r) => self.get_label(r.as_str())?,
             NumExpr::Raw(i) => i as u16,
+            NumExpr::Function(_) => return Err(AssemblerError { message: "Function received when getting address".to_string() }),
+
         };
         let m1: u8 = get_bits_msb(mem_addr, 0, 7) as u8;
         let m2: u8 = get_bits_lsb(mem_addr, 0, 7) as u8;
@@ -991,13 +1070,18 @@ impl Assembler {
                         
                     },
                     OperandLength::Unsigned8 => {
-                        let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = src else 
-                        {
+                        if let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = src {
+                            let immediate_val: u8 = i as u8;
+
+                            imm.push(immediate_val);
+                        } 
+                        else if let Operand::Immediate(Expr::Num(NumExpr::Function(f))) = src {
+                            let immediate_val: u8 = self.eval_func(*f)? as u8;
+                            imm.push(immediate_val);
+                        }
+                        else {
                             return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
                         };
-                        let immediate_val: u8 = i as u8;
-
-                        imm.push(immediate_val);
                         
                     },
                     OperandLength::Any => (),
@@ -1065,13 +1149,18 @@ impl Assembler {
                         
                     },
                     OperandLength::Unsigned8 => {
-                        let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = operand else 
-                        {
+                        if let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = operand {
+                            let immediate_val: u8 = i as u8;
+
+                            imm.push(immediate_val);
+                        } 
+                        else if let Operand::Immediate(Expr::Num(NumExpr::Function(f))) = operand {
+                            let immediate_val: u8 = self.eval_func(*f)? as u8;
+                            imm.push(immediate_val);
+                        }
+                        else {
                             return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
                         };
-                        let immediate_val: u8 = i as u8;
-
-                        imm.push(immediate_val);
                         
                     },
                     OperandLength::Any => (),
@@ -1118,12 +1207,28 @@ impl Assembler {
         return Ok(vec![]);
     }
 
+    fn eval_func(&mut self, func: Function) -> Result<i64, AssemblerError> {
+        match func {
+            Function::Hi(numexp) => {
+                let addr = self.eval_expr(Expr::Num(numexp))? as u16;
+                return Ok(get_bits_msb(addr, 0, 7) as i64);
+
+            },
+            Function::Lo(numexp) => {
+                let addr = self.eval_expr(Expr::Num(numexp))? as u16;
+                return Ok(get_bits_lsb(addr, 0, 7) as i64);
+
+            }
+        }
+    }
+
     fn eval_expr(&mut self, expr: Expr) -> Result<i64, AssemblerError> {
         return Ok(match expr {
             Expr::Str(_) => return Err(AssemblerError { message: "Couldn't turn string into one i64.".to_string() }),
             Expr::Num(n) => match n {
                 NumExpr::Raw(i) => i,
                 NumExpr::Reference(r) => self.get_label(r.as_str())? as i64,
+                NumExpr::Function(f) => self.eval_func(*f)?,
             },
             _ => return Err(AssemblerError { message: "Couldn't understand expr".to_string() })
 
@@ -1143,6 +1248,7 @@ impl Assembler {
                             self.get_label(s)?
                         },
                         NumExpr::Raw(i) => *i as u16,
+                        NumExpr::Function(f) => self.eval_func(*f.clone())? as u16,
 
                     },
                     _ => return Err(AssemblerError { message: "org signal received incorrect arg".to_string() })

@@ -1020,7 +1020,7 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
 
     let mut output: String = String::new();
 
-    let code = match fs::read_to_string(&(file_path.clone() + ".nasm")) {
+    let code = match fs::read_to_string(&(file_path.clone() + ".dnasm")) {
         Ok(s) => s,
         Err(e) => {println!("Assembler Error: {:?}", e); return;},
     };
@@ -1088,7 +1088,9 @@ fn main() {
 
 
 
-    load_assembly(&mut memory, "src\\write_letters".to_string());
+    load_assembly(&mut memory, "src\\test_funcs".to_string());
+
+    // return;
 
     
 

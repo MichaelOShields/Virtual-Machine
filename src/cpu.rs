@@ -1557,6 +1557,15 @@ impl Cpu {
         }
     }
 
+    pub fn debug(&mut self, mem: &mut Bus) {
+        println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", mem.get(self.pc), self.pc);
+        println!("Halting...");
+        for inst in mem.get_range(self.pc - 5, self.pc + 5) {
+            println!("Instruction: {:08b}", inst);
+
+        }
+    }
+
 
     pub fn step(&mut self, mem: &mut Bus) { // 1 for did something, 0 for did nothing
         let instruction: u16 =
