@@ -408,6 +408,11 @@ pub enum NumExpr {
     Raw ( i64 ),
     Reference ( String ),
     Function ( Box<Function> ),
+    BinaryOperation {
+        a: Box<NumExpr>,
+        operand: BinaryOp,
+        b: Box<NumExpr>,
+    }
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operand {
@@ -419,11 +424,6 @@ pub enum Expr {
     Str ( StrExpr ),
     Num ( NumExpr ),
     Operand ( Box<Expr> ),
-    BinaryExpr {
-        a: Box<Expr>,
-        operation: BinaryOp,
-        b: Box<Expr>,
-    },
     UnaryExpr {
         operation: UnaryOp,
         operatee: Box<Expr>,
@@ -629,6 +629,23 @@ impl Parser {
                 self.advance()?;
                 expr
             },
+            Token::LPAREN => {
+                self.basic_token(Token::LPAREN)?;
+                let a = self.expect_numexpr()?;
+                let next_tok: Token = self.peek_token()?;
+                let op: BinaryOp = match next_tok {
+                    Token::ASTERISK => BinaryOp::Mul,
+                    Token::PLUS => BinaryOp::Add,
+                    Token::MINUS => BinaryOp::Sub,
+                    Token::FSLASH => BinaryOp::Div,
+                    _ => return Err(ParserError { message: format!("Expected operation exp but got {:?}", self.peek_token()?) }),
+                };
+                self.basic_token(next_tok)?;
+
+                let b = self.expect_numexpr()?;
+                self.basic_token(Token::RPAREN)?;
+                NumExpr::BinaryOperation { a: Box::from(a), operand: op, b: Box::from(b) }
+            }
             _ => return Err(ParserError { message: format!("Couldn't understand numexpr {:?}", self.current_token) }),
         });
     }
@@ -767,6 +784,8 @@ impl Parser {
         });
     }
 
+
+
     fn parse_sig(&mut self, sigid: String) -> Result<Stmt, ParserError> {
         let mut args: Vec<Expr> = vec![];
         let taking_args = self.taking_next_args()?;
@@ -783,7 +802,9 @@ impl Parser {
                     Ok(i) => i,
                     Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
                 })),
-                _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
+                Token::Str(s) => Expr::Str(StrExpr::Raw(s.to_string())),
+                Token::Char(c) => Expr::Num(NumExpr::Raw(*c as i64)),
+                _ => return Err(ParserError { message: format!("Expected Expr, got {:?}", self.current_token) }),
             };
             self.advance()?;
             args.push(vectok);
@@ -893,6 +914,7 @@ pub struct Assembler {
     current_pos: u16,
     output: Vec<u8>,
     labels: HashMap<String, u16>,
+    consts: HashMap<String, u8>,
     program: Vec<Stmt>,
     mode: AssembleMode,
 }
@@ -904,6 +926,7 @@ impl Assembler {
             current_pos: 0_u16,
             output: vec![],
             labels: HashMap::new(),
+            consts: HashMap::new(),
             program,
             mode: AssembleMode::CountBytes,
         }
@@ -976,6 +999,7 @@ impl Assembler {
             NumExpr::Reference(r) => self.get_label(r.as_str())?,
             NumExpr::Raw(i) => i as u16,
             NumExpr::Function(_) => return Err(AssemblerError { message: "Function received when getting address".to_string() }),
+            NumExpr::BinaryOperation { a, operand, b } => self.eval_num_bin_op(*a, operand, *b)? as u16,
 
         };
         let m1: u8 = get_bits_msb(mem_addr, 0, 7) as u8;
@@ -1222,6 +1246,23 @@ impl Assembler {
         }
     }
 
+    fn eval_num_bin_op(&mut self, a: NumExpr, op: BinaryOp, b: NumExpr) -> Result<i64, AssemblerError> {
+        match op {
+            BinaryOp::Add => {
+                return Ok(self.eval_expr(Expr::Num(a))? + self.eval_expr(Expr::Num(b))?);
+            },
+            BinaryOp::Div => {
+                return Ok(self.eval_expr(Expr::Num(a))? / self.eval_expr(Expr::Num(b))?);
+            },
+            BinaryOp::Mul => {
+                return Ok(self.eval_expr(Expr::Num(a))? * self.eval_expr(Expr::Num(b))?);
+            },
+            BinaryOp::Sub => {
+                return Ok(self.eval_expr(Expr::Num(a))? - self.eval_expr(Expr::Num(b))?);
+            }
+        }
+    }
+
     fn eval_expr(&mut self, expr: Expr) -> Result<i64, AssemblerError> {
         return Ok(match expr {
             Expr::Str(_) => return Err(AssemblerError { message: "Couldn't turn string into one i64.".to_string() }),
@@ -1229,6 +1270,7 @@ impl Assembler {
                 NumExpr::Raw(i) => i,
                 NumExpr::Reference(r) => self.get_label(r.as_str())? as i64,
                 NumExpr::Function(f) => self.eval_func(*f)?,
+                NumExpr::BinaryOperation { a, operand, b } => self.eval_num_bin_op(*a, operand, *b)?,
             },
             _ => return Err(AssemblerError { message: "Couldn't understand expr".to_string() })
 
@@ -1249,6 +1291,7 @@ impl Assembler {
                         },
                         NumExpr::Raw(i) => *i as u16,
                         NumExpr::Function(f) => self.eval_func(*f.clone())? as u16,
+                        NumExpr::BinaryOperation { a, operand, b } => self.eval_num_bin_op(*a.clone(), operand.clone(), *b.clone())? as u16,
 
                     },
                     _ => return Err(AssemblerError { message: "org signal received incorrect arg".to_string() })
@@ -1264,12 +1307,36 @@ impl Assembler {
             else {
                 for arg in args {
                     let byte = self.eval_expr(arg)?;
-                    if 0 < byte || 255 < byte {
-                        return Err(AssemblerError { message: ".byte only takes 1 byte arguments".to_string() })
+                    if 0 > byte || 255 < byte {
+                        return Err(AssemblerError { message: format!(".byte only takes 1-byte args, received {:?}", byte) })
                     }
                     else {
                         returner.push(byte as u8);
                     }
+                }
+            }
+        }
+        else if name == "const" {
+            if args.len() != 2 {
+                return Err(AssemblerError { message: "const signal arg count incorrect".to_string() });
+            }
+            else {
+                    
+                let cons = (&args[0]).clone();
+                let val = (&args[1]).clone();
+                
+
+                if let Expr::Str(StrExpr::Raw(s)) = cons {
+                    let byte = self.eval_expr(val)?;
+                    if 0 > byte || 255 < byte {
+                        return Err(AssemblerError { message: format!(".const only takes 1-byte args, received {:?}", byte) })
+                    }
+                    else {
+                        self.consts.insert(s, byte as u8);
+                    }
+                }
+                else {
+                    return Err(AssemblerError { message: format!("const signal takes arg1 = string, got {:?}", args[0]) })
                 }
             }
         }
@@ -1322,6 +1389,12 @@ impl Assembler {
             print!("\n[\"{}\": {:0x}]", labels, labelu);
         }
         print!("\n");
+        print!("\nConsts:");
+        for (labels, labelu) in self.consts.clone() {
+            print!("\n[\"{}\": {:08b}]", labels, labelu);
+        }
+        print!("\n");
+        
 
         return Ok(match self.mode {
             AssembleMode::CountBytes => None,

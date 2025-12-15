@@ -1088,9 +1088,9 @@ fn main() {
 
 
 
-    load_assembly(&mut memory, "src\\test_funcs".to_string());
+    load_assembly(&mut memory, "src\\testconsts".to_string());
 
-    // return;
+    return;
 
     
 

@@ -1,0 +1,135 @@
+.org 0x400
+; init r0, r1 as 0x800
+mov ri r0, 0x08
+mov ri r1, 0x00
+start:
+; write H: index 0
+mov ri r2, 0
+call i write_glyph
+
+
+hlt
+
+
+
+.org 0x600
+
+FONT:
+; each letter is 7 bytes, so jump ahead letter number * 7
+; letter number kept in r2
+mul ri r2, 7
+
+
+H: ; letter 0
+    .byte 0b10001_000  ; row 0
+    .byte 0b10001_000  ; row 1
+    .byte 0b10001_000  ; row 2
+    .byte 0b11111_000  ; row 3 (crossbar)
+    .byte 0b10001_000  ; row 4
+    .byte 0b10001_000  ; row 5
+    .byte 0b10001_000  ; row 6
+
+E:
+    .byte 0b11111_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
+
+L:
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
+O:
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
+W:
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10101_000
+    .byte 0b10101_000
+    .byte 0b10101_000
+    .byte 0b01010_000
+SPACE:
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+R:
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
+    .byte 0b11000_000
+    .byte 0b10100_000
+    .byte 0b10010_000
+D:
+    .byte 0b11110_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11110_000
+
+
+go_right:
+add ri r1, 1
+jc i inc_r0
+ret
+
+go_down:
+add ri r1, 16
+jc i inc_r0
+ret
+
+
+inc_r0:
+add ri r0, 1
+ret
+
+write_glyph:
+    ; save cursor
+    mov rr r4, r0
+    mov rr r5, r1
+
+    ; r2 = glyph index
+    mul ri r2, 7              ; r2 = byte offset
+
+    ; r6:r7 = FONT base
+    mov ri r6, hi(FONT)
+    mov ri r7, lo(FONT)
+    add rr r6, r2             ; r6:r7 = glyph pointer
+
+    mov ri r3, 7              ; row counter
+
+glyph_loop:
+    mov rm r8, r6             ; load glyph row byte
+    mov mr r0, r8             ; write to VRAM
+    call i go_down
+
+    add ri r6, 1              ; next glyph row
+    sub ri r3, 1
+    jnz i glyph_loop
+
+    ; restore cursor
+    mov rr r0, r4
+    mov rr r1, r5
+    ret
+
+

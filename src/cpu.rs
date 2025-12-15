@@ -1558,7 +1558,7 @@ impl Cpu {
     }
 
     pub fn debug(&mut self, mem: &mut Bus) {
-        println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", mem.get(self.pc), self.pc);
+        println!("Halted.\nInstruction: {:016b}\nPC: {:x}", mem.get(self.pc), self.pc);
         println!("Halting...");
         for inst in mem.get_range(self.pc - 5, self.pc + 5) {
             println!("Instruction: {:08b}", inst);
@@ -1616,6 +1616,7 @@ impl Cpu {
 
                 }
                 self.halted = true;
+                self.debug(mem);
             },
         }
 
