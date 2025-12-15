@@ -14,7 +14,7 @@ use vc::VideoController;
 use vm::Vm;
 use device::{Mouse, Keyboard};
 
-use std::{num::NonZero, rc::Rc};
+use std::{fs, io, num::NonZero, rc::Rc};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, KeyEvent, WindowEvent},
@@ -25,6 +25,8 @@ use winit::{
 
 // ── softbuffer replaces pixels ────────────────────────────────────────────────
 use softbuffer::{Context, Surface};
+
+use crate::assembler::{Assembler, AssemblerError, Lexer, Parser};
 
 // ── constants ─────────────────────────────────────────────────────────────────
 const SIZE: u8 = 128;
@@ -399,7 +401,7 @@ fn load_bootloader(memory: &mut Bus) {
     memory.set(0x18, 0b0000_0100);
     memory.set(0x19, 0b1100_1000);
     memory.set(0x1A, 0b0000_0000);
-    
+
 
     // so R0:R1 is 2048, or 0x800
 
@@ -1004,30 +1006,89 @@ static HELLOWORLD: &[u8] = &[
 
 //];
 
-fn load_program(memory: &mut Bus, bytes: &[u8]) {
-    let base = 0x400;
-    for (i, byte) in bytes.iter().enumerate() {
-        memory.set(base + i as u16, *byte);
+// fn load_program(memory: &mut Bus, bytes: &[u8]) {
+//     let base = 0x400;
+//     for (i, byte) in bytes.iter().enumerate() {
+//         memory.set(base + i as u16, *byte);
+//     }
+// }
+
+// const LEXING: bool = false; // debugging lexer
+
+
+fn load_assembly(memory: &mut Bus, file_path: String) {
+
+    let mut output: String = String::new();
+
+    let code = match fs::read_to_string(&(file_path.clone() + ".nasm")) {
+        Ok(s) => s,
+        Err(e) => {println!("Assembler Error: {:?}", e); return;},
+    };
+    
+
+    let lex: Lexer = Lexer::new(&code);
+
+    let mut parser: Parser = Parser::new(lex);
+
+    let mut assembler = Assembler::new(match parser.parse() {
+        Ok(p) => p,
+        Err(e) => {println!("Assembler Error: {:?}", e); return;},
+    });
+    let assembled = assembler.assemble();
+
+
+    if let Ok(map) = assembled {
+
+        let mut bases: Vec<u16> = map.keys().copied().collect();
+        bases.sort_unstable();
+        for base in bases {
+            let bytes = &map[&base];
+            for (offset, byte) in bytes.iter().enumerate() {
+                let addr = base + offset as u16;
+                memory.set(addr, *byte); // ideally checked
+                output.push_str(format!("Instruction ({:0x}): {:08b}\n", addr, *byte).as_str());
+            }
+            
+        }
+
+        match fs::write(file_path + "_out.txt", output) {
+            Ok(()) => (),
+            Err(e) => {println!("Unable to write file with error {:?}", e); return;},
+        };
     }
+    else if let Err(e) = assembled {
+        println!("Assembler Error: {:?}", e); return;
+    }
+    else {
+        println!("Failed"); return;
+    }
+    
 }
 
-const LEXING: bool = true; // debugging lexer
+
 
 
 
 fn main() {
-    if LEXING {
-        assembler::assem("src\\assemblycode.txt".to_string());
-        return;
-    }
+    // if LEXING {
+    //     assembler::assem("src\\program.txt".to_string());
+    //     return;
+    // }
     
     let keyb = Keyboard::new();
     let ms = Mouse::new();
 
     let mut memory = Bus::new(ms, keyb);
 
-    load_bootloader(&mut memory);
-    load_program(&mut memory, HELLOWORLD);
+    // load_bootloader(&mut memory);
+
+    // load bootloader
+    load_assembly(&mut memory, "src\\bootloader".to_string());
+    // println!("{:?}", memory.get_range(0x00, 0x10));
+
+
+
+    load_assembly(&mut memory, "src\\write_letters".to_string());
 
     
 

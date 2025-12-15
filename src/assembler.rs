@@ -29,6 +29,7 @@ pub enum Token {
     Hex ( String ),
     Binary ( String ),
     Str(String),
+    Char( char ),
     Comment(String),
     PLUS,
     MINUS,
@@ -127,6 +128,21 @@ impl Lexer {
         }    
     }
 
+    fn read_char(&mut self) -> Result<Token, LexerError> {
+        self.advance();
+
+        if !self.peek().is_none() && self.peek() != Some('\'') {
+            let char_token = self.peek().unwrap();
+            self.advance(); // char
+            self.advance(); // '
+
+            return Ok(Token::Char( char_token ));
+        }
+        else {
+            return Err(LexerError{message: String::from("Couldn't lex character")});
+        }
+    }
+
     fn read_comment(&mut self) -> Result<Token, LexerError> {
         self.advance(); // ;
 
@@ -155,13 +171,24 @@ impl Lexer {
         }    
     }
 
-    fn read_ident(&mut self) -> Result<Token, LexerError> {
+    fn read_ident(&mut self, ignore_underscores: bool) -> Result<Token, LexerError> {
         let mut ident_token: String = String::from("");
 
         while let Some(c) = self.peek() {
             if c.is_alphanumeric() || c == '_' {
-                ident_token.push(c.to_ascii_lowercase());
-                self.advance();
+                if c == '_' {
+                    if !ignore_underscores {
+                        ident_token.push(c.to_ascii_lowercase());
+                        self.advance();
+                    }
+                    else {
+                        self.advance();
+                    }
+                }
+                else {
+                    ident_token.push(c.to_ascii_lowercase());
+                    self.advance();
+                }
             }
             else {
                 break;
@@ -174,7 +201,7 @@ impl Lexer {
     fn read_hex(&mut self) -> Result<Token, LexerError> {
         self.advance(); // 0
         self.advance(); // x
-        return Ok(Token::Hex(match self.read_ident()? {
+        return Ok(Token::Hex(match self.read_ident(true)? {
             Token::Ident(s) => s,
             _ => return Err(LexerError { message: "Expected a string w/in ident".to_string() }),
         }));
@@ -184,7 +211,7 @@ impl Lexer {
     fn read_binary(&mut self) -> Result<Token, LexerError> {
         self.advance(); // 0
         self.advance(); // b
-        return Ok(Token::Binary(match self.read_ident()? {
+        return Ok(Token::Binary(match self.read_ident(true)? {
             Token::Ident(s) => s,
             _ => return Err(LexerError { message: "Expected a string w/in ident".to_string() }),
         }));
@@ -277,7 +304,8 @@ impl Lexer {
                 '.' => Ok(self.basic_token(Token::PERIOD)),
                 '~' => self.read_comment(),
                 '"' => self.read_string(),
-                c if c.is_alphabetic() => self.read_ident(),
+                '\'' => self.read_char(),
+                c if c.is_alphabetic() => self.read_ident(false),
                 c if c.is_numeric() => match c {
                     '0' => match self.peek_next_char()? {
                         'x' => self.read_hex(),
@@ -329,63 +357,6 @@ impl Lexer {
 
 
 
-pub fn assem(path: String) {
-    let code = match fs::read_to_string(path) {
-        Ok(s) => s,
-        Err(e) => {println!("Couldn't read file: {:?}", e); return;}
-    };
-
-    let lex: Lexer = Lexer::new(&code);
-
-    let mut parser = Parser::new(lex);
-
-    let mut assembler = Assembler::new(parser);
-    let assembled = assembler.assemble();
-
-    match assembled {
-        Ok(a) => {
-            for idx in a.keys() {
-                for inst in a.get(idx).unwrap() {
-                    println!("Instruction ({:x}): {:08b}", idx, inst);
-                }
-            }
-        }
-        Err(e) => println!("Error: {:?}", e),
-    }
-
-    // let mut first = match parser.next_stmt() {
-    //         Ok(s) => s,
-    //         Err(e) => panic!("Got PE {:?}", e),
-    //     };
-    // println!("First: {:?}", first);
-
-    // while first != Stmt::End {
-    //     if first != Stmt::Newline {
-    //         println!("Stmt: {:?}", first);  
-    //     };
-    //     first = match parser.next_stmt() {
-    //         Ok(s) => s,
-    //         Err(e) => {println!("Error: {:?}", e); break;}
-    //     };
-    // }
-
-    // let mut first = match lex.next_token() {
-    //     Ok(t) => t,
-    //     Err(e) => panic!("{}",(format!("Received LexerError {}", e.message))),
-    // };
-
-    // while first != Token::EOF {
-    //     println!("{:?}", first);
-    //     first = match lex.next_token() {
-    //         Ok(t) => t,
-    //         Err(e) => panic!("{}",(format!("Received LexerError {}", e.message))),
-    //     };
-    // }
-    // println!("{:?}", first);
-}
-
-
-
 // Parser
 
 
@@ -407,35 +378,35 @@ pub enum SingleMode {
 
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum StrExpr {
     Raw ( String ),
-    Reference ( String ),
+    // Reference ( String ),
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum UnaryOp {
     Plus,
     Minus,
     BitNot,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum BinaryOp {
     Add,
     Sub,
     Div,
     Mul,
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NumExpr {
     Raw ( i64 ),
     Reference ( String ),
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operand {
     Register ( u8 ) ,
     Immediate ( Expr ),
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Str ( StrExpr ),
     Num ( NumExpr ),
@@ -452,26 +423,36 @@ pub enum Expr {
 
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum OpKind {
-    Double,
-    Single,
+    Double, // takes 2 operands
+    Single, // takes 1 operand
+    Zero, // takes 0 operands
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum OperandLength {
+    Unsigned16,
+    Unsigned8,
+    Any,
     Zero,
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Stmt {
     DoubleOperation {
         opid: String, // opcode 3 letter abbr
         mode: DoubleMode,
         dest: Operand,
         src: Operand,
+        operand_length: OperandLength,
     },
     SingleOperation {
         opid: String,
         mode: SingleMode,
         operand: Operand,
+        operand_length: OperandLength,
     },
     ZeroOperation {
         opid: String,
@@ -499,7 +480,7 @@ pub struct Parser {
     current_token: Token,
     single_modes: HashMap<char, SingleMode>,
     double_modes: HashMap<String, DoubleMode>,
-    ops: HashMap<String, OpKind>,
+    ops: HashMap<String, (OpKind, OperandLength)>,
 }
 
 impl Parser {
@@ -516,47 +497,56 @@ impl Parser {
         double_modes.insert("ri".to_string(), DoubleMode::Ri);
         double_modes.insert("mr".to_string(), DoubleMode::Mr);
 
-        let mut ops: HashMap<String, OpKind> = HashMap::new();
-        ops.insert("nop".to_string(), OpKind::Zero);
-        ops.insert("ret".to_string(), OpKind::Zero);
-        ops.insert("hlt".to_string(), OpKind::Zero);
+        let mut ops: HashMap<String, (OpKind, OperandLength)> = HashMap::new();
 
-        ops.insert("not".to_string(), OpKind::Single);
+        ops.insert("nop".to_string(), (OpKind::Zero, OperandLength::Zero));
+        ops.insert("ret".to_string(), (OpKind::Zero, OperandLength::Zero));
+        ops.insert("hlt".to_string(), (OpKind::Zero, OperandLength::Zero));
 
-        ops.insert("jmp".to_string(), OpKind::Single);
-        ops.insert("jz".to_string(), OpKind::Single);
-        ops.insert("jc".to_string(), OpKind::Single);
-        ops.insert("jo".to_string(), OpKind::Single);
-        ops.insert("js".to_string(), OpKind::Single);
-        ops.insert("jnz".to_string(), OpKind::Single);
-        ops.insert("jg".to_string(), OpKind::Single);
-        ops.insert("jl".to_string(), OpKind::Single);
+    
 
-        ops.insert("push".to_string(), OpKind::Single);
-        ops.insert("pop".to_string(), OpKind::Single);
-        ops.insert("call".to_string(), OpKind::Single);
+        ops.insert("jmp".to_string(), (OpKind::Single, OperandLength::Unsigned16));
+        ops.insert("jz".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
+        ops.insert("jc".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
+        ops.insert("jo".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
+        ops.insert("js".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
+        ops.insert("jnz".to_string(), (OpKind::Single, OperandLength::Unsigned16));
+        ops.insert("jg".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
+        ops.insert("jl".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
 
-        ops.insert("shl".to_string(), OpKind::Single);
-        ops.insert("shr".to_string(), OpKind::Single);
-        ops.insert("sar".to_string(), OpKind::Single);
+        ops.insert("call".to_string(), (OpKind::Single, OperandLength::Unsigned16));
 
-        ops.insert("ssp".to_string(), OpKind::Single);
-        ops.insert("skip".to_string(), OpKind::Single);
+        
+        ops.insert("push".to_string(), (OpKind::Single, OperandLength::Any));
+        ops.insert("pop".to_string(),  (OpKind::Single, OperandLength::Any));
 
+        
+        ops.insert("shl".to_string(), (OpKind::Single, OperandLength::Unsigned8));
+        ops.insert("shr".to_string(), (OpKind::Single, OperandLength::Unsigned8));
+        ops.insert("sar".to_string(), (OpKind::Single, OperandLength::Unsigned8));
 
-        ops.insert("mov".to_string(), OpKind::Double);
+        
+        ops.insert("ssp".to_string(),  (OpKind::Single, OperandLength::Unsigned16)); // stack pointer set
+        ops.insert("skip".to_string(), (OpKind::Single, OperandLength::Unsigned8));  // skip N instructions/bytes
 
-        ops.insert("add".to_string(), OpKind::Double);
-        ops.insert("sub".to_string(), OpKind::Double);
-        ops.insert("mul".to_string(), OpKind::Double);
-        ops.insert("div".to_string(), OpKind::Double);
-        ops.insert("mod".to_string(), OpKind::Double);
+        
+        ops.insert("mov".to_string(), (OpKind::Double, OperandLength::Unsigned8));
 
-        ops.insert("and".to_string(), OpKind::Double);
-        ops.insert("or".to_string(), OpKind::Double);
-        ops.insert("xor".to_string(), OpKind::Double);
+        
+        ops.insert("add".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("sub".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("mul".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("div".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("mod".to_string(), (OpKind::Double, OperandLength::Unsigned8));
 
-        ops.insert("cmp".to_string(), OpKind::Double);
+        
+        ops.insert("and".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("or".to_string(),  (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("xor".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("not".to_string(), (OpKind::Single, OperandLength::Unsigned8));
+
+        
+        ops.insert("cmp".to_string(), (OpKind::Double, OperandLength::Unsigned8));
 
 
 
@@ -605,28 +595,57 @@ impl Parser {
                 self.advance()?;
                 return Ok(Operand::Immediate(expr));
             },
+            Token::Hex(h) => {
+                let expr = Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
+                    Ok(i) => i,
+                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+                }));
+                self.advance()?;
+                return Ok(Operand::Immediate(expr));
+            },
+            Token::Binary(h) => {
+                let expr = Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
+                    Ok(i) => i,
+                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+                }));
+                self.advance()?;
+                return Ok(Operand::Immediate(expr));
+            },
+            /*
+            Token::Ident(s) => Expr::Num(NumExpr::Reference(s.to_string())),
+            Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
+            Token::Hex(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
+                Ok(i) => i,
+                Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+            })),
+            Token::Binary(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
+                Ok(i) => i,
+                Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+            })),
+            _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
+             */
             _ => return Err(ParserError { message: format!("Couldn't understand operand expr {:?}", self.current_token) }),
 
         };
     }
 
-    fn parse_double_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
+    fn parse_double_op(&mut self, opid: String, operand_length: OperandLength) -> Result<Stmt, ParserError> {
         self.expect_ident()?; // opid
         let mode_ident = self.expect_ident()?;
         // println!("mode: {:?}", mode_ident);
         let mode = match self.double_modes.get(&mode_ident) {
             Some(m) => m,
-            None => return Err(ParserError { message: "Unable to get mode".to_string() }),
+            None => return Err(ParserError { message: format!("Unable to get mode {:?}", mode_ident) }),
         }.clone();
         let dest = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected dest operand".into() })?;
         self.basic_token(Token::COMMA)?;
         let src = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected src operand".into() })?;
-        return Ok(Stmt::DoubleOperation { opid, mode, dest, src })
+        return Ok(Stmt::DoubleOperation { opid, mode, dest, src, operand_length })
     }
 
-    fn parse_single_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
+    fn parse_single_op(&mut self, opid: String, operand_length: OperandLength) -> Result<Stmt, ParserError> {
         self.expect_ident()?; // opid
         let mode_ident = self.expect_ident()?;
         // println!("mode: {:?}", mode_ident);
@@ -641,7 +660,7 @@ impl Parser {
         }.clone();
         let operand = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected single operand".into() })?;
-        return Ok(Stmt::SingleOperation { opid, mode, operand })
+        return Ok(Stmt::SingleOperation { opid, mode, operand, operand_length })
     }
 
     fn parse_zero_op(&mut self, opid: String) -> Result<Stmt, ParserError> {
@@ -680,7 +699,7 @@ impl Parser {
 
     fn parse_sig(&mut self, sigid: String) -> Result<Stmt, ParserError> {
         let mut args: Vec<Expr> = vec![];
-        let mut taking_args = self.taking_next_args()?;
+        let taking_args = self.taking_next_args()?;
 
         while taking_args {
             let vectok: Expr = match &self.current_token {
@@ -718,7 +737,7 @@ impl Parser {
         return Ok(self.parse_sig(sigid.to_string())?);
     }
 
-    pub fn next_stmt(&mut self) -> Result<Stmt, ParserError> {
+    fn next_stmt(&mut self) -> Result<Stmt, ParserError> {
         // println!("Looking at token {:?}", self.current_token);
         if self.current_token == Token::EOF {
             return Ok(Stmt::End);
@@ -734,9 +753,14 @@ impl Parser {
         }
         else if let Token::Ident(ref s) = self.current_token {
             match self.ops.get(s.as_str()) {
-                Some(OpKind::Double) => return Ok(self.parse_double_op(s.clone())?),
-                Some(OpKind::Single) => return Ok(self.parse_single_op(s.clone())?),
-                Some(OpKind::Zero) => return Ok(self.parse_zero_op(s.clone())?),
+                Some(o) => {
+                    let (operation_type, operand_length) = o;
+                    match operation_type {
+                        OpKind::Double => return Ok(self.parse_double_op(s.clone(), operand_length.clone())?),
+                        OpKind::Single => return Ok(self.parse_single_op(s.clone(), operand_length.clone())?),
+                        OpKind::Zero => return Ok(self.parse_zero_op(s.clone())?),
+                    };
+                },
                 None => (),
             };
             if matches!(self.parser_lexer.peek_next_token().unwrap(), Token::COLON) {
@@ -756,14 +780,34 @@ impl Parser {
             return Err(ParserError { message: format!("Couldn't parse token {:?}", self.current_token) });
         }
     }
+
+
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut program: Vec<Stmt> = vec![];
+
+        loop {
+            let stmt = self.next_stmt()?;
+            if stmt == Stmt::End {
+                break;
+            };
+            program.push(stmt);
+        }
+        Ok(program)
+    }
 }
 
 
 // assembler will reserve R6 and R7 for under the hood memory ops
 
+#[derive(PartialEq, Debug, Clone)]
+enum AssembleMode {
+    CountBytes,
+    Assemble,
+}
+
 #[derive(Debug)]
 pub struct AssemblerError {
-    message: String,
+    pub message: String,
 }
 
 #[derive(Debug, PartialEq)]
@@ -772,26 +816,20 @@ pub struct Assembler {
     current_pos: u16,
     output: Vec<u8>,
     labels: HashMap<String, u16>,
-    parser: Parser,
+    program: Vec<Stmt>,
+    mode: AssembleMode,
 }
 
 impl Assembler {
-    pub fn new(parser: Parser) -> Self {
+    pub fn new(program: Vec<Stmt>) -> Self {
         Self {
             pc: 0_u16,
             current_pos: 0_u16,
             output: vec![],
             labels: HashMap::new(),
-            parser,
+            program,
+            mode: AssembleMode::CountBytes,
         }
-    }
-
-    fn get_stmt(&mut self) -> Result<Stmt, AssemblerError> {
-        return Ok(match self.parser.next_stmt() {
-            Ok(s) => s,
-            Err(e) => return Err(AssemblerError { message: format!("Got ParserError {:?}", e) }),
-
-        });
     }
 
     fn opcode_from_opid(&mut self, opid: String) -> Result<u8, AssemblerError> {
@@ -840,6 +878,15 @@ impl Assembler {
         });
     }
 
+    fn smode_convert(&mut self, mode: SingleMode) -> Result<u8, AssemblerError> {
+        return Ok(match mode {
+            SingleMode::R => 0b0000,
+            SingleMode::M => 0b0001,
+            SingleMode::I => 0b0010,
+            _ => return Err(AssemblerError { message: "Unable to parse mode".to_string() }),
+        });
+    }
+
     fn register_from_operand(&mut self, dest: Operand) -> Result<u8, AssemblerError> {
         return Ok(match dest {
             Operand::Register(num) => num,
@@ -847,32 +894,31 @@ impl Assembler {
         });
     }
 
-    fn mem_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>), AssemblerError> { // result is register to grab mem addr, vec<u8> is just loading the mem addr into R6 and R7
+    fn get_addr_from_numexpr(&mut self, numexpr: NumExpr) -> Result<(u8, u8), AssemblerError> {
+        let mem_addr = match numexpr {
+            NumExpr::Reference(r) => self.get_label(r.as_str())?,
+            NumExpr::Raw(i) => i as u16,
+        };
+        let m1: u8 = get_bits_msb(mem_addr, 0, 7) as u8;
+        let m2: u8 = get_bits_lsb(mem_addr, 0, 7) as u8;
+        return Ok((m1, m2));
+    }
+
+    fn mem_to_reg_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>), AssemblerError> { // result is register to grab mem addr, vec<u8> is just loading the mem addr into R6 and R7
         let reg: u8 = 6;
         let mut instrs: Vec<u8> = vec![];
         match mem {
             Operand::Immediate(e) => match e {
-                Expr::Num(numex) => match numex {
-                    NumExpr::Reference(r) => {
-                        if !self.labels.contains_key(&r) {
-                            return Err(AssemblerError { message: "Attempted to reference a nonexistent label".to_string() })
-                        };
-                        let mem_addr: u16 = *self.labels.get(&r).unwrap();
-                        let m1: u8 = get_bits_msb(mem_addr, 0, 7) as u8;
-                        let m2: u8 = get_bits_lsb(mem_addr, 0, 7) as u8;
-                        let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))) };
-                        let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))) };
-                        let mut loadingm1 = self.assemble_double_op(movem1toreg6stmt)?;
-                        let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
-                        instrs.append(&mut loadingm1);
-                        instrs.append(&mut loadingm2);
+                Expr::Num(numex) => {
+                    let (m1, m2) = self.get_addr_from_numexpr(numex)?;
+                    let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))), operand_length: OperandLength::Unsigned16 };
+                    let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))), operand_length: OperandLength::Unsigned16 };
+                    let mut loadingm1 = self.assemble_double_op(movem1toreg6stmt)?;
+                    let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
+                    instrs.append(&mut loadingm1);
+                    instrs.append(&mut loadingm2);
 
-                        return Ok((reg, instrs));
-
-
-
-                    },
-                    _ => return Err(AssemblerError { message: "Got unexpected raw number when parsing memory operand".to_string() })
+                    return Ok((reg, instrs));
                 },
                 _ => return Err(AssemblerError { message: "Received unexpected immediate operand expression type.".to_string() })
             },
@@ -889,14 +935,23 @@ impl Assembler {
         self.pc += amt;
     }
 
+    fn assemble_zero_op(&mut self, opid: String) -> Result<Vec<u8>, AssemblerError> {
+        let mut instrs: Vec<u8> = vec![]; 
+        let mut instr1: u8 = 0;
+        instr1 |= self.opcode_from_opid(opid)? << 2;
+        instrs.push(instr1);
+
+        return Ok(instrs);
+    }
+
     fn assemble_double_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
         let mut instrs: Vec<u8> = vec![]; 
-        if let Stmt::DoubleOperation { opid, mode, dest, src } = op {
+        if let Stmt::DoubleOperation { opid, mode, dest, src, operand_length } = op {
             let mut instr1: u8 = 0;
             instr1 |= self.opcode_from_opid(opid)? << 2;
             let modebinary = self.dbmode_convert(mode.clone())?;
-            let mode1: u8 = get_bits_msb(modebinary as u16, 0, 1) as u8;
-            let mode2: u8 = get_bits_msb(modebinary as u16, 2, 3) as u8;
+            let mode1: u8 = get_bits_lsb(modebinary as u16, 2, 3) as u8;
+            let mode2: u8 = get_bits_lsb(modebinary as u16, 0, 1) as u8;
             instr1 |= mode1;
             let mut instr2: u8 = 0;
             instr2 |= mode2 as u8;
@@ -904,6 +959,7 @@ impl Assembler {
 
             let mut reg1: u8 = 0;
             let mut reg2: u8 = 0;
+            let mut imm: Vec<u8> = vec![];
 
             if mode == DoubleMode::Rr {
                 reg1 = self.register_from_operand(dest)?;
@@ -911,9 +967,43 @@ impl Assembler {
             }
             else if mode == DoubleMode::Rm {
                 reg1 = self.register_from_operand(dest)?;
-                let (register2, mut setup_instrs) = self.mem_from_operand(src)?;
+                let (register2, mut setup_instrs) = self.mem_to_reg_from_operand(src)?;
                 reg2 = register2;
                 instrs.append(&mut setup_instrs);
+            } // FINISH
+            else if mode == DoubleMode::Mr {
+                let (register1, mut setup_instrs) = self.mem_to_reg_from_operand(dest)?;
+                reg1 = register1;
+                reg2 = self.register_from_operand(src)?;
+                instrs.append(&mut setup_instrs);
+            }
+            else if mode == DoubleMode::Ri {
+                reg1 = self.register_from_operand(dest)?;
+                match operand_length {
+                    OperandLength::Unsigned16 => {
+                        let Operand::Immediate(Expr::Num(numexpr))  = src else 
+                        {
+                            return Err(AssemblerError {message: "Expected 16-bit immediate operand.".to_string()})
+                        };
+                        let (m1, m2) = self.get_addr_from_numexpr(numexpr)?;
+                        imm.push(m1);
+                        imm.push(m2);
+                        
+                    },
+                    OperandLength::Unsigned8 => {
+                        let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = src else 
+                        {
+                            return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                        };
+                        let immediate_val: u8 = i as u8;
+
+                        imm.push(immediate_val);
+                        
+                    },
+                    OperandLength::Any => (),
+                    OperandLength::Zero => return Err(AssemblerError { message: "Received OperandLength of zero during immediate value request".to_string() }),
+                    
+                }
             }
 
             instr2 |= reg1 << 3;
@@ -924,6 +1014,7 @@ impl Assembler {
 
             instrs.push(instr1);
             instrs.push(instr2);
+            instrs.append(&mut imm);
         }
         else {
             return Err(AssemblerError { message: "Unable to parse DoubleOperation".to_string() });
@@ -932,10 +1023,93 @@ impl Assembler {
         return Ok(instrs);
     }
 
-    fn get_label(&mut self, label: String) -> Result<u16, AssemblerError> {
-        return Ok(match self.labels.get(&label) {
+    fn assemble_single_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
+        let mut instrs: Vec<u8> = vec![]; 
+        println!("Single op: {:?}", op);
+        if let Stmt::SingleOperation { opid, mode, operand, operand_length } = op {
+            let mut instr1: u8 = 0;
+            instr1 |= self.opcode_from_opid(opid)? << 2;
+            let modebinary = self.smode_convert(mode.clone())?;
+            println!("Modebinary: {:08b}", modebinary);
+            let mode1: u8 = get_bits_lsb(modebinary as u16, 2, 3) as u8;
+            let mode2: u8 = get_bits_lsb(modebinary as u16, 0, 1) as u8;
+            instr1 |= mode1;
+            let mut instr2: u8 = 0;
+            instr2 |= mode2 as u8;
+            instr2 <<= 6;
+
+            let mut reg1: u8 = 0;
+            let mut reg2: u8 = 0;
+
+            let mut imm: Vec<u8> = vec![];
+
+            if mode == SingleMode::R {
+                reg1 = self.register_from_operand(operand)?;
+            }
+            else if mode == SingleMode::M {
+                let (register1, mut setup_instrs) = self.mem_to_reg_from_operand(operand)?;
+                reg1 = register1;
+                
+                instrs.append(&mut setup_instrs);
+            }
+            else if mode == SingleMode::I {
+                match operand_length {
+                    OperandLength::Unsigned16 => {
+                        let Operand::Immediate(Expr::Num(numexpr))  = operand else 
+                        {
+                            return Err(AssemblerError {message: "Expected 16-bit immediate operand.".to_string()})
+                        };
+                        let (m1, m2) = self.get_addr_from_numexpr(numexpr)?;
+                        imm.push(m1);
+                        imm.push(m2);
+                        
+                    },
+                    OperandLength::Unsigned8 => {
+                        let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = operand else 
+                        {
+                            return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                        };
+                        let immediate_val: u8 = i as u8;
+
+                        imm.push(immediate_val);
+                        
+                    },
+                    OperandLength::Any => (),
+                    OperandLength::Zero => return Err(AssemblerError { message: "Received OperandLength of zero during immediate value request".to_string() }),
+                    
+                }
+            }
+
+            instr2 |= reg1 << 3;
+            instr2 |= reg2;
+
+            println!("instr1: {:08b}", instr1);
+            println!("instr2: {:08b}", instr2);
+            println!("imm: {:?}", imm);
+
+
+
+
+            instrs.push(instr1);
+            instrs.push(instr2);
+            if !imm.is_empty() {
+                instrs.append(&mut imm);
+            }
+        }
+        else {
+            return Err(AssemblerError { message: "Unable to parse SingleOperation".to_string() });
+        }
+
+        return Ok(instrs);
+    }
+
+    fn get_label(&mut self, label: &str) -> Result<u16, AssemblerError> {
+        return Ok(match self.labels.get(label) {
             Some(u) => *u,
-            None => return Err(AssemblerError { message: "Attempted to get nonexistent label".to_string() })
+            None => match self.mode {
+                AssembleMode::Assemble => return Err(AssemblerError { message: "Attempted to get nonexistent label".to_string() }),
+                AssembleMode::CountBytes => 0,
+            }
         });
     }
 
@@ -944,56 +1118,134 @@ impl Assembler {
         return Ok(vec![]);
     }
 
+    fn eval_expr(&mut self, expr: Expr) -> Result<i64, AssemblerError> {
+        return Ok(match expr {
+            Expr::Str(_) => return Err(AssemblerError { message: "Couldn't turn string into one i64.".to_string() }),
+            Expr::Num(n) => match n {
+                NumExpr::Raw(i) => i,
+                NumExpr::Reference(r) => self.get_label(r.as_str())? as i64,
+            },
+            _ => return Err(AssemblerError { message: "Couldn't understand expr".to_string() })
+
+        });
+    }
+
     fn parse_signal(&mut self, name: String, args: Vec<Expr>) -> Result<Vec<u8>, AssemblerError> {
+        let mut returner: Vec<u8> = vec![];
         if name == "org" {
             if args.is_empty() || args.len() > 1 {
-                return Err(AssemblerError { message: "org signal contained too many args".to_string() });
+                return Err(AssemblerError { message: "org signal arg count incorrect".to_string() });
             }
             else {
-                match &args[0] {
+                let new_pos = match &args[0] {
                     Expr::Num(n) => match n {
                         NumExpr::Reference(s) => {
-                            self.current_pos = self.get_label(s.to_string())?;
+                            self.get_label(s)?
                         },
-                        NumExpr::Raw(i) => {self.current_pos = *i as u16;},
+                        NumExpr::Raw(i) => *i as u16,
 
                     },
                     _ => return Err(AssemblerError { message: "org signal received incorrect arg".to_string() })
+                };
+                self.pc = new_pos;
+                self.current_pos = new_pos;
+            }
+        }
+        else if name == "byte" {
+            if args.is_empty() {
+                return Err(AssemblerError { message: "byte signal arg count incorrect".to_string() });
+            }
+            else {
+                for arg in args {
+                    let byte = self.eval_expr(arg)?;
+                    if 0 < byte || 255 < byte {
+                        return Err(AssemblerError { message: ".byte only takes 1 byte arguments".to_string() })
+                    }
+                    else {
+                        returner.push(byte as u8);
+                    }
                 }
             }
         }
-        return Ok(vec![]);
+        return Ok(returner);
     }
 
 
-    pub fn assemble(&mut self) -> Result<HashMap<u16, Vec<u8>>, AssemblerError>{
+    fn walk(&mut self) -> Result<Option<HashMap<u16, Vec<u8>>>, AssemblerError> {
+
 
         let mut byte_segments: HashMap<u16, Vec<u8>> = HashMap::new();
         self.current_pos = self.pc;
+        
+        let program = self.program.clone();
 
-        let mut first: Stmt = self.get_stmt()?;
-        while first != Stmt::End {
-            println!("Stmt: {:?}", first);
-            let next_instructions: Vec<u8> = match first {
-                Stmt::DoubleOperation { opid, mode, dest, src } => self.assemble_double_op(Stmt::DoubleOperation { opid, mode, dest, src })?,
+
+
+        for stmt in program {
+            println!("Stmt: {:?}", stmt);
+            let next_instructions: Vec<u8> = match stmt {
+                Stmt::DoubleOperation { opid, mode, dest, src, operand_length } => self.assemble_double_op(Stmt::DoubleOperation { opid, mode, dest, src, operand_length })?,
+                Stmt::SingleOperation { opid, mode, operand, operand_length } => self.assemble_single_op(Stmt::SingleOperation { opid, mode, operand, operand_length })?,
+                Stmt::ZeroOperation { opid } => self.assemble_zero_op(opid)?,
                 Stmt::Label(s) => self.label(s)?,
                 Stmt::End => vec![],
-                Stmt::Comment(_c) => vec![],
+                Stmt::Comment(_) => vec![],
                 Stmt::Signal { name, args } => self.parse_signal(name, args)?,
                 Stmt::Newline => vec![],
                 _ => return Err(AssemblerError { message: "Unexpected stmt".to_string() }),
             };
             if !next_instructions.is_empty() {
+                println!("Next instructions:");
                 for inst in next_instructions.clone() {
-                    println!("Instruction ({:x}): {:08b}", self.current_pos, inst);
+                    print!("(0x{:x}): 0b{:08b},\n", self.current_pos, inst);
                 }
+                print!("\n");
                 self.inc_pc(next_instructions.len() as u16);
-                byte_segments.entry(self.current_pos).or_insert_with(||Vec::new()).extend(next_instructions);
+                if self.mode == AssembleMode::Assemble {
+                    byte_segments.entry(self.current_pos).or_insert_with(||Vec::new()).extend(next_instructions);
+                }
+                
             }
-            first = self.get_stmt()?;
+            else {
+                println!("Empty instructions");
+            }
         }
 
-        return Ok(byte_segments);
+        print!("\nLabels:");
+        for (labels, labelu) in self.labels.clone() {
+            print!("\n[\"{}\": {:0x}]", labels, labelu);
+        }
+        print!("\n");
+
+        return Ok(match self.mode {
+            AssembleMode::CountBytes => None,
+            AssembleMode::Assemble => Some(byte_segments),
+        });
+    }
+
+    pub fn assemble(&mut self) -> Result<HashMap<u16, Vec<u8>>, AssemblerError> {
+        // save current state
+        let orig_pc = self.pc;
+        let orig_pos = self.current_pos;
+
+
+        // first pass
+        self.mode = AssembleMode::CountBytes;
+        self.walk()?;
+        let lbls = self.labels.clone();
+
+
+        // second pass
+        self.mode = AssembleMode::Assemble;
+
+        self.pc = orig_pc;
+        self.current_pos = orig_pos;
+        self.labels = lbls;
+
+        return Ok(match self.walk()? {
+            Some(s) => s,
+            None => return Err(AssemblerError { message: "Assembling returned none".to_string() })
+        });
     }
 }
 

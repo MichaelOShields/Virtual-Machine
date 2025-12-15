@@ -44,9 +44,7 @@ impl Bus {
     }
 
     pub fn set(&mut self, dest: u16, src: u8) {
-
         self.ram[dest as usize] = src;
-
     }
 
     pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] {

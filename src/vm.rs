@@ -22,6 +22,10 @@ impl Vm {
 
     pub fn step(&mut self) {
 
+        if self.cpu.pc >= 0x800 {
+            panic!("PC ran away: {:04X}", self.cpu.pc);
+        }
+
         if !self.cpu.halted {
             self.cpu.step(&mut self.mem);
             // self.cpu.status();

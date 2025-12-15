@@ -191,7 +191,7 @@ impl Cpu {
 
                 self.increment_pc(3); // uses operand -> 3 bytes
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         };
     }   
 
@@ -366,7 +366,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         };
 
     }
@@ -471,7 +471,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -566,7 +566,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -670,7 +670,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -755,7 +755,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -838,7 +838,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -922,7 +922,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -1006,7 +1006,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -1087,7 +1087,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -1164,7 +1164,7 @@ impl Cpu {
 
                 self.pc = i;
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -1188,7 +1188,7 @@ impl Cpu {
                     // i
                     self.increment_pc(4); // jumping code doesn't run so must compensate
                 },
-                _ => println!("Not accounted for"),
+                _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
             }
         }
     }
@@ -1321,7 +1321,7 @@ impl Cpu {
                 self.increment_pc(3);
 
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -1521,7 +1521,7 @@ impl Cpu {
                 self.sp = i;
                 self.increment_pc(3);
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -1553,7 +1553,7 @@ impl Cpu {
 
                 self.increment_pc(3 + i);
             },
-            _ => println!("Not accounted for"),
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
     }
 
@@ -1598,10 +1598,14 @@ impl Cpu {
             0b011010_u16 => {self.op_sar(mode, reg, mem); }, // ARITHMETIC SHIFT RIGHT
             0b011011_u16 => {self.op_ssp(mode, reg, mem); }, // SET STACK POINTER
             0b011100_u16 => {self.op_skip(mode, reg, mem); },
-            0b111111_u16 => {self.halted = true; }, // HALT
+            0b111111_u16 => {self.halted = true; println!("CPU halted")}, // HALT
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);
                 println!("Halting...");
+                for inst in mem.get_range(self.pc - 5, self.pc + 5) {
+                    println!("Instruction: {:08b}", inst);
+
+                }
                 self.halted = true;
             },
         }
