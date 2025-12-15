@@ -1046,7 +1046,7 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
             for (offset, byte) in bytes.iter().enumerate() {
                 let addr = base + offset as u16;
                 memory.set(addr, *byte); // ideally checked
-                output.push_str(format!("Instruction ({:0x}): {:08b}\n", addr, *byte).as_str());
+                output.push_str(format!("Instruction ({:0x}): {:08b}\n", base, *byte).as_str());
             }
             
         }
@@ -1090,7 +1090,7 @@ fn main() {
 
     load_assembly(&mut memory, "src\\testconsts".to_string());
 
-    return;
+    // return;
 
     
 

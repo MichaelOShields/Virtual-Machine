@@ -2,4 +2,6 @@
 
 .const "test", 'a'
 
+mov ri r4, test
+
 hlt

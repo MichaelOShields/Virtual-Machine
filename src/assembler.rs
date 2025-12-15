@@ -1103,6 +1103,16 @@ impl Assembler {
                             let immediate_val: u8 = self.eval_func(*f)? as u8;
                             imm.push(immediate_val);
                         }
+                        else if let Operand::Immediate(Expr::Num(NumExpr::Reference(r))) = src {
+                            if self.labels.contains_key(&r) {
+                                return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                            }
+                            else {
+                                // in consts which takes u8s
+                                let immediate_val: u8 = self.get_const(&r)?;
+                                imm.push(immediate_val);
+                            }
+                        }
                         else {
                             return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
                         };
@@ -1226,7 +1236,20 @@ impl Assembler {
         });
     }
 
+    fn get_const(&mut self, label: &str) -> Result<u8, AssemblerError> {
+        return Ok(match self.consts.get(label) {
+            Some(u) => *u,
+            None => match self.mode {
+                AssembleMode::Assemble => return Err(AssemblerError { message: "Attempted to get nonexistent const".to_string() }),
+                AssembleMode::CountBytes => 0,
+            }
+        });
+    }
+
     fn label(&mut self, label: String) -> Result<Vec<u8>, AssemblerError> { // will return a blank u8 vec
+        if self.consts.contains_key(&label) {
+            return Err(AssemblerError { message: "Attempt to create label w/ constant".to_string() })
+        }
         self.labels.insert(label, self.pc);
         return Ok(vec![]);
     }
@@ -1327,6 +1350,9 @@ impl Assembler {
                 
 
                 if let Expr::Str(StrExpr::Raw(s)) = cons {
+                    if self.labels.contains_key(&s) {
+                        return Err(AssemblerError { message: "Attempt to create constant w/ label".to_string() })
+                    }
                     let byte = self.eval_expr(val)?;
                     if 0 > byte || 255 < byte {
                         return Err(AssemblerError { message: format!(".const only takes 1-byte args, received {:?}", byte) })

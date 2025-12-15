@@ -1562,8 +1562,8 @@ impl Cpu {
         println!("Halting...");
         for inst in mem.get_range(self.pc - 5, self.pc + 5) {
             println!("Instruction: {:08b}", inst);
-
         }
+        self.status();
     }
 
 
@@ -1607,7 +1607,7 @@ impl Cpu {
             0b011010_u16 => {self.op_sar(mode, reg, mem); }, // ARITHMETIC SHIFT RIGHT
             0b011011_u16 => {self.op_ssp(mode, reg, mem); }, // SET STACK POINTER
             0b011100_u16 => {self.op_skip(mode, reg, mem); },
-            0b111111_u16 => {self.halted = true; println!("CPU halted")}, // HALT
+            0b111111_u16 => {self.halted = true; println!("CPU halted"); self.debug(mem);}, // HALT
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);
                 println!("Halting...");
