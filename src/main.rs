@@ -136,6 +136,7 @@ impl ApplicationHandler for App {
                     Key::Character("0") => 40,
                     Key::Named(NamedKey::Backspace) => 50,
                     Key::Named(NamedKey::Enter) => 51,
+                    Key::Named(NamedKey::Escape) => 52,
                     _ => 0,
                 };
                 self.vm.mem.key_inject(keycode);
@@ -1090,7 +1091,7 @@ fn main() {
 
 
 
-    load_assembly(&mut memory, "src\\write_letters".to_string());
+    load_assembly(&mut memory, "src\\kernel".to_string());
 
     // return;
 

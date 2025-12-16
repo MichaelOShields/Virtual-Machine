@@ -83,12 +83,22 @@ use crate::binary::{get_bits_lsb, get_bits_msb};
 
 
 
+
+
+
+
 #[allow(dead_code)]
 pub struct Flags {
     carry: bool,
     sign: bool,
     zero: bool,
     overflow: bool,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum CPUMode {
+    Kernel,
+    User,
 }
 
 #[allow(dead_code)]
@@ -98,6 +108,9 @@ pub struct Cpu {
     pub pc: u16,
     pub sp: u16,
     pub halted: bool,
+    pub usermode: CPUMode,
+    pub instruction_ctr: u16,
+
 
 
 }
@@ -112,6 +125,8 @@ impl Cpu {
             pc: 0,
             sp: 0,
             halted: false,
+            usermode: CPUMode::Kernel,
+            instruction_ctr: 0,
         }
     }
 
@@ -1618,6 +1633,10 @@ impl Cpu {
                 self.halted = true;
                 self.debug(mem);
             },
+        }
+
+        if self.usermode == CPUMode::User {
+            self.instruction_ctr += 1;
         }
 
         // self.status();

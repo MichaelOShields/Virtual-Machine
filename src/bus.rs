@@ -5,7 +5,7 @@ use std::ops::Range;
 // memory bus
 // owns keyboard, mouse, etc
 pub struct Bus {
-    ram: [u8; 16384],
+    ram: [u8; 65536],
     mouse: Mouse,
     keyboard: Keyboard,
     mmio_range: Range<u16>,
@@ -16,7 +16,7 @@ pub struct Bus {
 impl Bus {
     pub fn new(mouse: Mouse, keyboard: Keyboard) -> Self {
         Self {
-            ram: [0; 16384],
+            ram: [0; 65536],
             mouse,
             keyboard,
             mmio_range: 0x1000..0x10FF,
