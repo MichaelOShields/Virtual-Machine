@@ -429,52 +429,12 @@ mov ri r2, a
 call i write_glyph
 
 
-key_loop:  
+key_loop:
     ; mov ri r2, caret
     ; call i go_left
     ; call i write_glyph
     call i check_if_keys
     jmp i key_loop
-
-
-start_write:
-; init r0, r1 as vram
-mov ri r0, 0x08
-mov ri r1, 0x00
-
-mov ri r2, h
-call i write_glyph
-
-mov ri r2, e
-call i write_glyph
-
-mov ri r2, l
-call i write_glyph
-
-mov ri r2, l
-call i write_glyph
-
-mov ri r2, o
-call i write_glyph
-
-mov ri r2, space
-call i write_glyph
-
-mov ri r2, w
-call i write_glyph
-
-mov ri r2, o
-call i write_glyph
-
-mov ri r2, r
-call i write_glyph
-
-mov ri r2, l
-call i write_glyph
-
-mov ri r2, d
-call i write_glyph
-
 
 
 hlt
