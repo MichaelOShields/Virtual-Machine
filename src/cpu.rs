@@ -84,9 +84,6 @@ use crate::binary::{get_bits_lsb, get_bits_msb};
 
 
 
-
-
-
 #[allow(dead_code)]
 pub struct Flags {
     carry: bool,

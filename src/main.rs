@@ -6,6 +6,7 @@ mod vm;
 mod binary;
 mod device;
 mod assembler;
+mod instructions;
 
 
 use cpu::Cpu;
