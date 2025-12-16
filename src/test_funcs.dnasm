@@ -1,8 +1,0 @@
-.org 0x400
-
-test: 
-
-mov ri r3, hi(test)
-mov ri r4, lo(test)
-
-

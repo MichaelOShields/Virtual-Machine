@@ -134,6 +134,8 @@ impl ApplicationHandler for App {
                     Key::Character("8") => 38,
                     Key::Character("9") => 39,
                     Key::Character("0") => 40,
+                    Key::Named(NamedKey::Backspace) => 50,
+                    Key::Named(NamedKey::Enter) => 51,
                     _ => 0,
                 };
                 self.vm.mem.key_inject(keycode);
@@ -1022,7 +1024,7 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
 
     let code = match fs::read_to_string(&(file_path.clone() + ".dnasm")) {
         Ok(s) => s,
-        Err(e) => {println!("Assembler Error: {:?}", e); return;},
+        Err(e) => {panic!("Assembler Error: {:?}", e);},
     };
     
 
@@ -1032,7 +1034,7 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
 
     let mut assembler = Assembler::new(match parser.parse() {
         Ok(p) => p,
-        Err(e) => {println!("Assembler Error: {:?}", e); return;},
+        Err(e) => {panic!("Assembler Error: {:?}", e);},
     });
     let assembled = assembler.assemble();
 
@@ -1053,14 +1055,14 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
 
         match fs::write(file_path + "_out.txt", output) {
             Ok(()) => (),
-            Err(e) => {println!("Unable to write file with error {:?}", e); return;},
+            Err(e) => {panic!("Unable to write file with error {:?}", e);},
         };
     }
     else if let Err(e) = assembled {
-        println!("Assembler Error: {:?}", e); return;
+        panic!("Assembler Error: {:?}", e);
     }
     else {
-        println!("Failed"); return;
+        panic!("Failed");
     }
     
 }
@@ -1088,7 +1090,7 @@ fn main() {
 
 
 
-    load_assembly(&mut memory, "src\\testconsts".to_string());
+    load_assembly(&mut memory, "src\\write_letters".to_string());
 
     // return;
 

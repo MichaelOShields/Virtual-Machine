@@ -525,8 +525,8 @@ impl Parser {
         ops.insert("call".to_string(), (OpKind::Single, OperandLength::Unsigned16));
 
         
-        ops.insert("push".to_string(), (OpKind::Single, OperandLength::Any));
-        ops.insert("pop".to_string(),  (OpKind::Single, OperandLength::Any));
+        ops.insert("push".to_string(), (OpKind::Single, OperandLength::Unsigned8));
+        ops.insert("pop".to_string(),  (OpKind::Single, OperandLength::Unsigned8));
 
         
         ops.insert("shl".to_string(), (OpKind::Single, OperandLength::Unsigned8));
@@ -1013,6 +1013,12 @@ impl Assembler {
         match mem {
             Operand::Immediate(e) => match e {
                 Expr::Num(numex) => {
+                    let savereg6: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
+                    let savereg7: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
+                    let mut loadingreg6 = self.assemble_single_op(savereg6)?;
+                    let mut loadingreg7 = self.assemble_single_op(savereg7)?;
+                    instrs.append(&mut loadingreg6);
+                    instrs.append(&mut loadingreg7);
                     let (m1, m2) = self.get_addr_from_numexpr(numex)?;
                     let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))), operand_length: OperandLength::Unsigned16 };
                     let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))), operand_length: OperandLength::Unsigned16 };
@@ -1020,6 +1026,15 @@ impl Assembler {
                     let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
                     instrs.append(&mut loadingm1);
                     instrs.append(&mut loadingm2);
+
+                    let loadreg6: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
+                    let loadreg7: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
+                    let mut loadingpopreg6 = self.assemble_single_op(loadreg6)?;
+                    let mut loadingpopreg7 = self.assemble_single_op(loadreg7)?;
+                    instrs.append(&mut loadingpopreg7);
+                    instrs.append(&mut loadingpopreg6);
+
+
 
                     return Ok((reg, instrs));
                 },

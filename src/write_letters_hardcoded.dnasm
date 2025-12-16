@@ -1,6 +1,6 @@
 .org 0x400
 
-jmp i start
+jmp i start_write
 
 glyphs_pos: ; where we dump the raw data
 
@@ -249,14 +249,14 @@ glyphs_pos: ; where we dump the raw data
 .byte 0b10000_000
 .byte 0b11111_000
 
-.const "caret", 27
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
+.const "exclaim", 27
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00000_000
+.byte 0b00100_000
 
 
 
@@ -279,11 +279,6 @@ ret
 go_right:
 add ri r1, 1
 jc i inc_r0
-ret
-
-go_left:
-sub ri r1, 1
-jc i dec_r0
 ret
 
 go_up:
@@ -328,8 +323,6 @@ call i go_up
 ret
 
 write_glyph: ; glyph id stored in r2, font ptr stored in r3:r4
-; mov ri r0, 0x08
-; mov ri r1, 0x00
 mov ri r3, hi(glyphs_pos)
 mov ri r4, lo(glyphs_pos)
 mov rr r5, r2
@@ -362,8 +355,6 @@ call i inc_r4
 ret
 
 
-
-
 inc_r3:
 add ri r3, 1
 ret
@@ -372,69 +363,7 @@ ret
 
 
 
-check_if_keys: ; works
-    mov ri r6, 0x10
-    mov ri r7, 0x00
-    mov rm r5, r6
-    cmp ri r5, 1
-    jz i write_key
-    ret
 
-backspace:
-    call i go_left
-    mov ri r2, space
-    call i write_glyph
-    call i go_left
-    ret
-
-enter_loop:
-    add ri r2, 1
-    call i go_down
-    cmp ri r2, 6
-    jnz i enter_loop
-    ret
-
-enter:
-    mov ri r2, 0
-    call i enter_loop
-    ret
-
-write_key:
-    mov ri r6, 0x10
-    mov ri r7, 0x01
-    mov rm r5, r6 ; works
-    
-    cmp ri r5, 50 ; backspace
-    jz i backspace
-    
-    cmp ri r5, 51 ; enter
-    jz i enter
-
-    jnz i glyph_queue
-
-    ret
-
-
-glyph_queue:
-    mov rr r2, r5
-    call i write_glyph
-    ret
-
-start:
-
-mov ri r0, 0x08
-mov ri r1, 0x00
-
-mov ri r2, a
-call i write_glyph
-
-
-key_loop:  
-    ; mov ri r2, caret
-    ; call i go_left
-    ; call i write_glyph
-    call i check_if_keys
-    jmp i key_loop
 
 
 start_write:
@@ -475,6 +404,8 @@ call i write_glyph
 mov ri r2, d
 call i write_glyph
 
+mov ri r2, exclaim
+call i write_glyph
 
 
 hlt
