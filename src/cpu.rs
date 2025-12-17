@@ -92,14 +92,14 @@ pub struct Flags {
     overflow: bool,
 }
 
-#[derive(PartialEq, Debug, Copy)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Access { // reading, writing, executing
     R, // read
     W, // write
     X, // execute
 }
 
-#[derive(PartialEq, Debug, Copy)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum CPUMode {
     K, // Kernel
     U, // User
@@ -114,9 +114,10 @@ pub enum Fault {
 
 #[derive(PartialEq, Debug)]
 pub enum CPUExit {
-    InstructionCounterReset,
-    Halt,
-    Fault ( Fault ),
+    Timer, // when we need to return control to kernel; ID 0b0000
+    Halt, // Kill current program; ID 0b0001
+    Syscall, // R0-R3 give information re which syscall; ID 0b0010
+    Fault ( Fault ), // Something went wrong, probably w/ permissions; ID 0b0011
 }
 
 
@@ -131,12 +132,15 @@ pub struct Cpu {
     pub access: Access,
     pub instruction_ctr: u16,
 
+    pub kernel_trap_address: u16,
+
+
 
 
 }
 
 impl Cpu {
-    pub fn new() -> Self {
+    pub fn new(trap_addr: u16) -> Self {
         let flags = Flags {carry: false, sign: false, zero: false, overflow: false,};
 
         Self {
@@ -148,6 +152,7 @@ impl Cpu {
             mode: CPUMode::K,
             access: Access::W,
             instruction_ctr: 0,
+            kernel_trap_address: trap_addr,
         }
     }
 
@@ -155,8 +160,11 @@ impl Cpu {
         self.pc += incs as u16;
     }
 
-    fn get_operand(&mut self, mem: &mut Bus) -> u8 {
-        return mem.get(self.pc + 0x02);
+    fn get_operand(&mut self, mem: &mut Bus) -> Option<u8> {
+        return match self.memget(self.pc + 0x02, mem) {
+            Some(i) => Some(i),
+            None => None,
+        };
     }
 
     fn push(&mut self, val: u8, mem: &mut Bus) {
@@ -164,10 +172,13 @@ impl Cpu {
         mem.set(self.sp, val);
     }
 
-    fn pop(&mut self, mem: &mut Bus) -> u8 {
-        let v = mem.get(self.sp);
+    fn pop(&mut self, mem: &mut Bus) -> Option<u8> {
+        let v = match self.memget(self.sp, mem) {
+            Some(i) => i,
+            None => return None,
+        };
         self.sp += 1;
-        return v;
+        return Some(v);
     }
 
     fn op_move(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
@@ -191,9 +202,16 @@ impl Cpu {
                 let m22 = self.regs[(get_bits_lsb(reg, 0, 2) + 1) as usize];
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
+
+                let newr1 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = mem.get(m2);
+                *r1 = newr1;
                 
                 self.increment_pc(2);
 
@@ -218,7 +236,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                }; // 1 byte; got operand, so adds 1 byte to full instruction
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -306,11 +327,15 @@ impl Cpu {
 
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
+                let b = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+                
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 let a = (*r1).clone();
-                let b = mem.get(m2);
                 
 
                 // *r1 = mem.get(m2) + *r1;
@@ -337,7 +362,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let a = m1val.clone();
                 let b = r2;
@@ -355,7 +383,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                }; // 1 byte; got operand, so adds 1 byte to full instruction
                 // println!("{}", i2);
                 // println!("reg: {:016b}", reg);
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
@@ -379,13 +410,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                }; // 1 byte; got operand, so adds 1 byte to full instruction
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let a = m1val.clone();
                 let b = i2;
@@ -437,10 +474,14 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
+                let b = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 let a = (*r1).clone();
-                let b = mem.get(m2);
 
                 let (result, borrow) = a.overflowing_sub(b);
 
@@ -459,7 +500,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let a = mem.get(m1);
+                let a = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let b = r2;
 
                 let (result, borrow) = a.overflowing_sub(b);
@@ -475,7 +519,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                }; // 1 byte; got operand, so adds 1 byte to full instruction
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -492,13 +539,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                }; // 1 byte; got operand, so adds 1 byte to full instruction
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let (result, borrow) = m1val.overflowing_sub(i2);
                 mem.set(m1, result);
@@ -541,9 +594,14 @@ impl Cpu {
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
 
+                let m2val: u8 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                let result = *r1 / mem.get(m2);
+                let result = *r1 / m2val;
                 *r1 = result;
                 self.signs_div(result);
                 
@@ -558,7 +616,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let result = m1val / r2;
                 mem.set(m1, result);
@@ -571,7 +632,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -587,13 +651,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let result = m1val / i2;
                 mem.set(m1, result);
@@ -637,9 +707,14 @@ impl Cpu {
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
 
+                let m2val: u8 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                let (result, overflow) = (*r1).overflowing_mul(mem.get(m2));
+                let (result, overflow) = (*r1).overflowing_mul(m2val);
 
                 *r1 = result;
                 
@@ -655,7 +730,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let (result, overflow) = m1val.overflowing_mul(r2);
 
@@ -673,7 +751,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -690,13 +771,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let (result, overflow) = m1val.overflowing_mul(i2);
                 self.signs_mul(result, overflow);
@@ -738,9 +825,14 @@ impl Cpu {
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
 
+                let m2val: u8 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 % mem.get(m2);
+                *r1 = *r1 % m2val;
                 
                 self.increment_pc(2);
 
@@ -753,7 +845,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val % r2);
                 
@@ -764,7 +859,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -778,13 +876,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val % i2);
 
@@ -821,9 +925,14 @@ impl Cpu {
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
 
+                let m2val: u8 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 & mem.get(m2);
+                *r1 = *r1 & m2val;
                 
                 self.increment_pc(2);
 
@@ -836,7 +945,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val & r2);
                 
@@ -847,7 +959,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -861,13 +976,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val & i2);
 
@@ -900,14 +1021,21 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
+
+
                 // println!("regs: {:016b}", reg);
 
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
 
+                let m2val: u8 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 | mem.get(m2);
+                *r1 = *r1 | m2val;
                 
                 self.increment_pc(2);
 
@@ -920,7 +1048,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val | r2);
                 
@@ -931,7 +1062,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -945,13 +1079,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val | i2);
 
@@ -989,9 +1129,14 @@ impl Cpu {
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
 
+                let m2val: u8 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 ^ mem.get(m2);
+                *r1 = *r1 ^ m2val;
                 
                 self.increment_pc(2);
 
@@ -1004,7 +1149,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val ^ r2);
                 
@@ -1015,7 +1163,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -1029,13 +1180,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, m1val ^ i2);
 
@@ -1072,9 +1229,14 @@ impl Cpu {
                 // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
                 // println!("m2: {}", m2);
 
+                let m2val: u8 = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = !mem.get(m2);
+                *r1 = !m2val;
                 
                 self.increment_pc(2);
 
@@ -1087,7 +1249,10 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 
                 self.increment_pc(2);
 
@@ -1096,7 +1261,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -1110,13 +1278,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                // let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 mem.set(m1, !i2);
 
@@ -1127,7 +1301,7 @@ impl Cpu {
         }
     }
 
-    fn single_val(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> u8 {
+    fn single_val(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Option<u8> {
         match mode {
             0b0000_u16 => {
                 // r
@@ -1135,7 +1309,7 @@ impl Cpu {
                 let r = self.regs[get_bits_lsb(reg, 3, 5) as usize].clone();
 
                 self.increment_pc(2);
-                return r;
+                return Some(r);
             },
             0b0001_u16 => {
                 // m
@@ -1148,7 +1322,7 @@ impl Cpu {
 
                 self.increment_pc(2);
 
-                return mem.get(m);
+                return self.memget(m, mem);
 
             },
             0b0010_u16 => {
@@ -1160,7 +1334,7 @@ impl Cpu {
                 return i;
 
             },
-            _ => 0b0000_0000_u8,
+            _ => Some(0b0000_0000_u8),
         }
     }
 
@@ -1187,14 +1361,20 @@ impl Cpu {
 
                 let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
 
-                self.pc = (mem.get(m) as u16) << 8 | (mem.get(m + 1) as u16);
+                self.pc = (match self.memget(m, mem) { Some(i) => i, None => return} as u16) << 8 | (match self.memget(m + 1, mem) { Some(i) => i, None => return}) as u16;
 
             },
             0b0010_u16 => {
                 // i
-                let i1 = self.get_operand(mem);
+                let i1 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 self.increment_pc(1);
-                let i2 = self.get_operand(mem);
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let i = (i1 as u16) << 8 | (i2 as u16);
 
@@ -1285,10 +1465,14 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
+                let b = match self.memget(m2, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 let a = (*r1).clone();
-                let b = mem.get(m2);
 
                 let (result, borrow) = a.overflowing_sub(b);
 
@@ -1305,7 +1489,7 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                let a = mem.get(m1);
+                let a = match self.memget(m1, mem) { Some(i) => i, None => return};
                 let b = r2;
 
                 let (result, borrow) = a.overflowing_sub(b);
@@ -1319,7 +1503,10 @@ impl Cpu {
                 // i2 to r1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -1339,13 +1526,19 @@ impl Cpu {
                 // i2 to m1
                 // dest src
 
-                let i2 = self.get_operand(mem); // 1 byte; got operand, so adds 1 byte to full instruction
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
                 let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m1 = (m11 as u16) << 8 | (m12 as u16);
 
-                let m1val = mem.get(m1);
+                let m1val: u8 = match self.memget(m1, mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let a = m1val;
                 let b = i2;
@@ -1362,7 +1555,10 @@ impl Cpu {
     }
 
     fn op_push(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
-        let val: u8 = self.single_val(mode, reg, mem);
+        let val: u8 = match self.single_val(mode, reg, mem) {
+            Some(i) => i,
+            None => return,
+        };
         self.push(val, mem);
     }
 
@@ -1383,10 +1579,32 @@ impl Cpu {
 
 
     fn op_ret(&mut self, mem: &mut Bus) {
-        let m2 = self.pop(mem);
-        let m1 = self.pop(mem);
+        let m2 = match self.pop(mem) {
+            Some(i) => i,
+            None => return,
+        };
+        let m1 = match self.pop(mem) {
+            Some(i) => i,
+            None => return,
+        };
+
+
 
         self.pc = (m1 as u16) << 8 | (m2 as u16);
+    }
+
+
+    fn op_sys(&mut self, mem: &mut Bus) {
+
+        self.mode = CPUMode::K;
+
+        let pc1: u8 = get_bits_msb(self.pc, 0, 7) as u8;
+        let pc2: u8 = get_bits_lsb(self.pc, 0, 7) as u8;
+
+        self.push(pc2, mem);
+        self.push(pc1, mem);
+
+        self.pc = self.kernel_trap_address;
     }
 
 
@@ -1394,7 +1612,10 @@ impl Cpu {
         match mode {
             0b0000_u16 => {
                 // r1
-                let val = self.pop(mem);
+                let val = match self.pop(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
@@ -1409,7 +1630,10 @@ impl Cpu {
                 let m = (m1 as u16) << 8 | (m2 as u16);
 
 
-                let val = self.pop(mem);
+                let val = match self.pop(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 mem.set(m, val);
             },
             _ => println!("Unaccounted-for mode in pop"),
@@ -1437,7 +1661,7 @@ impl Cpu {
 
                 let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
 
-                let unshifted = mem.get(m);
+                let unshifted = match self.memget(m, mem) { Some(i) => i, None => return};
 
                 mem.set(m, unshifted << 1);
 
@@ -1469,7 +1693,7 @@ impl Cpu {
 
                 let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
 
-                let unshifted = mem.get(m);
+                let unshifted = match self.memget(m, mem) { Some(i) => i, None => return};
 
                 mem.set(m, unshifted >> 1);
 
@@ -1506,7 +1730,7 @@ impl Cpu {
 
                 let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
 
-                let unshifted = mem.get(m);
+                let unshifted = match self.memget(m, mem) { Some(i) => i, None => return};
 
                 let m_i: i8 = (unshifted as i8) >> 1;
 
@@ -1541,16 +1765,22 @@ impl Cpu {
 
                 let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
 
-                self.sp = (mem.get(m) as u16) << 8 | (mem.get(m + 1) as u16);
+                self.sp = (match self.memget(m, mem) { Some(i) => i, None => return} as u16) << 8 | (match self.memget(m + 1, mem) { Some(i) => i, None => return} as u16);
 
                 self.increment_pc(2);
 
             },
             0b0010_u16 => {
                 // i
-                let i1 = self.get_operand(mem);
+                let i1 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
                 self.increment_pc(1);
-                let i2 = self.get_operand(mem);
+                let i2 = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 let i = (i1 as u16) << 8 | (i2 as u16);
 
@@ -1579,13 +1809,17 @@ impl Cpu {
                 let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
 
                 let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+                let mval = match self.memget(m, mem) { Some(i) => i, None => return};
 
-                self.increment_pc(2 + mem.get(m));
+                self.increment_pc(2 + mval);
 
             },
             0b0010_u16 => {
                 // i
-                let i = self.get_operand(mem);
+                let i = match self.get_operand(mem) {
+                    Some(i) => i,
+                    None => return,
+                };
 
                 self.increment_pc(3 + i);
             },
@@ -1594,7 +1828,7 @@ impl Cpu {
     }
 
     pub fn debug(&mut self, mem: &mut Bus) {
-        println!("Halted.\nInstruction: {:016b}\nPC: {:x}", mem.get(self.pc), self.pc);
+        println!("Halted.\nInstruction: {:016b}\nPC: {:x}", match self.memget(self.pc, mem) {Some(i) => i, None => 80085}, self.pc);
         println!("Halting...");
         for inst in mem.get_range(self.pc - 5, self.pc + 5) {
             println!("Instruction: {:08b}", inst);
@@ -1615,10 +1849,14 @@ impl Cpu {
 
 
     pub fn step(&mut self, mem: &mut Bus) { // 1 for did something, 0 for did nothing
+
+        
         self.access = Access::X;
+
+
         let instruction: u16 =
-        (mem.get(self.pc) as u16) << 8
-        | ((mem.get(self.pc + 1) as u16));
+        (match self.memget(self.pc, mem) { Some(i) => i, None => return} as u16) << 8
+        | ((match self.memget(self.pc + 1, mem) { Some(i) => i, None => return} as u16));
 
         let opcode = get_bits_msb(instruction, 0, 5);
         let mode = get_bits_msb(instruction, 6, 9);
@@ -1655,6 +1893,7 @@ impl Cpu {
             0b011010_u16 => {self.op_sar(mode, reg, mem); }, // ARITHMETIC SHIFT RIGHT
             0b011011_u16 => {self.op_ssp(mode, reg, mem); }, // SET STACK POINTER
             0b011100_u16 => {self.op_skip(mode, reg, mem); },
+            0b011101_u16 => {self.op_sys(mem); },
             0b111111_u16 => {self.halted = true; println!("CPU halted"); self.debug(mem);}, // HALT
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);
