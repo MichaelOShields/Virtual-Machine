@@ -92,11 +92,33 @@ pub struct Flags {
     overflow: bool,
 }
 
-#[derive(PartialEq, Debug)]
-pub enum CPUMode {
-    Kernel,
-    User,
+#[derive(PartialEq, Debug, Copy)]
+pub enum Access { // reading, writing, executing
+    R, // read
+    W, // write
+    X, // execute
 }
+
+#[derive(PartialEq, Debug, Copy)]
+pub enum CPUMode {
+    K, // Kernel
+    U, // User
+}
+
+#[derive(PartialEq, Debug)]
+pub enum Fault {
+    IllegalInstruction,
+    IllegalMemAccess,
+    UnknownAction,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum CPUExit {
+    InstructionCounterReset,
+    Halt,
+    Fault ( Fault ),
+}
+
 
 #[allow(dead_code)]
 pub struct Cpu {
@@ -105,7 +127,8 @@ pub struct Cpu {
     pub pc: u16,
     pub sp: u16,
     pub halted: bool,
-    pub usermode: CPUMode,
+    pub mode: CPUMode,
+    pub access: Access,
     pub instruction_ctr: u16,
 
 
@@ -122,7 +145,8 @@ impl Cpu {
             pc: 0,
             sp: 0,
             halted: false,
-            usermode: CPUMode::Kernel,
+            mode: CPUMode::K,
+            access: Access::W,
             instruction_ctr: 0,
         }
     }
@@ -1578,8 +1602,20 @@ impl Cpu {
         self.status();
     }
 
+    fn handle_exit(&mut self, exit: CPUExit) {
+        ()
+    }
+
+    fn memget(&mut self, address: u16, mem: &mut Bus) -> Option<u8> {
+        match mem.get(address, self.mode, self.access) {
+            Ok(i) => Some(i),
+            Err(exit) => {self.handle_exit(exit); None}
+        }
+    }
+
 
     pub fn step(&mut self, mem: &mut Bus) { // 1 for did something, 0 for did nothing
+        self.access = Access::X;
         let instruction: u16 =
         (mem.get(self.pc) as u16) << 8
         | ((mem.get(self.pc + 1) as u16));
@@ -1632,7 +1668,7 @@ impl Cpu {
             },
         }
 
-        if self.usermode == CPUMode::User {
+        if self.mode == CPUMode::U {
             self.instruction_ctr += 1;
         }
 
