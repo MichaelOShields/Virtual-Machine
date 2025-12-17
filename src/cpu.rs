@@ -166,6 +166,7 @@ impl Cpu {
             None => None,
         };
     }
+    // comment so i can commit an idea
 
     fn push(&mut self, val: u8, mem: &mut Bus) {
         self.sp -= 1;
@@ -1850,7 +1851,7 @@ impl Cpu {
 
     pub fn step(&mut self, mem: &mut Bus) { // 1 for did something, 0 for did nothing
 
-        
+
         self.access = Access::X;
 
 
