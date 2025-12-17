@@ -126,7 +126,9 @@ pub struct Cpu {
     pub regs: [u8; 8],
     pub flags: Flags,
     pub pc: u16,
-    pub sp: u16,
+    pub ksp: u16,
+    pub usp: u16, // user sp
+    pub sp: u16, // current sp
     pub halted: bool,
     pub mode: CPUMode,
     pub access: Access,
@@ -148,6 +150,8 @@ impl Cpu {
             regs: [0; 8],
             flags: flags,
             pc: 0,
+            usp: 0,
+            ksp: 0,
             sp: 0,
             halted: false,
             mode: CPUMode::K,
@@ -1407,7 +1411,7 @@ impl Cpu {
 
     fn op_push(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         let val: u8 = self.single_val(mode, reg, mem)?;
-        self.push(val, mem);
+        self.push(val, mem)?;
         Ok(())
     }
 
@@ -1420,8 +1424,8 @@ impl Cpu {
             _ => 0, // not understood
         };
 
-        self.push((pos >> 8) as u8, mem);
-        self.push(pos as u8, mem);
+        self.push((pos >> 8) as u8, mem)?;
+        self.push(pos as u8, mem)?;
 
         Ok(self.op_j(mode, reg, mem)?)
     }
@@ -1442,6 +1446,24 @@ impl Cpu {
     fn op_sys(&mut self, mem: &mut Bus) -> Result<(), CPUExit> {
 
         return Err(CPUExit::Syscall);
+    }
+
+    fn op_kret(&mut self, mem: &mut Bus) -> Result<(), CPUExit> { // KERNEL RETURN; return after syscall/exit
+
+        let pc1 = self.pop(mem)?;
+        let pc2 = self.pop(mem)?;
+        self.pc = (pc1 as u16) << 8 | pc2 as u16;
+
+        self.ksp = self.sp;
+
+        self.sp = self.usp;
+
+        self.mode = CPUMode::U;
+
+
+
+        Ok(())
+
     }
 
 
@@ -1677,6 +1699,9 @@ impl Cpu {
             }
         };
 
+        self.usp = self.sp;
+        self.sp = self.ksp;
+
         self.mode = CPUMode::K;
 
         let pc1: u8 = get_bits_msb(self.pc, 0, 7) as u8;
@@ -1699,10 +1724,12 @@ impl Cpu {
     }
 
     fn memget(&mut self, address: u16, mem: &mut Bus) -> Result<u8, CPUExit> {
+        self.access = Access::R;
         Ok(mem.get(address, self.mode, self.access)?)
     }
 
     fn memset(&mut self, dest: u16, src: u8, mem: &mut Bus) -> Result<(), CPUExit> {
+        self.access = Access::W;
         Ok(mem.set(dest, src, self.mode)?)
 
     }
@@ -1717,11 +1744,6 @@ impl Cpu {
 
     fn act(&mut self, mem: &mut Bus) -> Result<(), CPUExit> { // 1 for did something, 0 for did nothing
 
-        if self.instruction_ctr >= self.instruction_lim && self.mode == CPUMode::U {
-            self.instruction_ctr = 0;
-            return Err(CPUExit::Timer);
-        }
-
 
         self.access = Access::X;
 
@@ -1735,37 +1757,52 @@ impl Cpu {
         let reg = get_bits_msb(instruction, 10, 15);
 
 
+        if self.mode == CPUMode::U {
+            if self.instruction_ctr >= self.instruction_lim {
+                self.instruction_ctr = 0;
+                return Err(CPUExit::Timer);
+            }
+
+            match opcode {
+                0b011011_u16 => return Err(CPUExit::Fault(Fault::IllegalInstruction)), // ssp
+                0b011110_u16 => return Err(CPUExit::Fault(Fault::IllegalInstruction)), // kret
+                _ => (),
+            }
+        }
+
+
         match opcode {
             0b000000_u16 => {self.increment_pc(1); }, // NO OP
-            0b000001_u16 => {self.op_move(mode, reg, mem); }, // MOVE
-            0b000010_u16 => {self.op_add(mode, reg, mem); }, // ADD
-            0b000011_u16 => {self.op_sub(mode, reg, mem); }, // SUB
-            0b000100_u16 => {self.op_mul(mode, reg, mem); }, // MUL
-            0b000101_u16 => {self.op_div(mode, reg, mem); }, // DIV
-            0b000110_u16 => {self.op_mod(mode, reg, mem); }, // MOD
-            0b000111_u16 => {self.op_and(mode, reg, mem); }, // AND
-            0b001000_u16 => {self.op_or(mode, reg, mem); }, // OR
-            0b001001_u16 => {self.op_xor(mode, reg, mem); }, // XOR
-            0b001010_u16 => {self.op_not(mode, reg, mem); }, // NOT
-            0b001011_u16 => {self.op_j(mode, reg, mem); }, // JUMP
-            0b001100_u16 => {self.op_jz(mode, reg, mem); }, // JUMP Z
-            0b001101_u16 => {self.op_jc(mode, reg, mem); }, // JUMP C
-            0b001110_u16 => {self.op_jo(mode, reg, mem); }, // JUMP O
-            0b001111_u16 => {self.op_js(mode, reg, mem); }, // JUMP S
-            0b010000_u16 => {self.op_jnz(mode, reg, mem); }, // JUMP !Z
-            0b010001_u16 => {self.op_jg(mode, reg, mem); }, // JUMP >
-            0b010010_u16 => {self.op_jl(mode, reg, mem); }, // JUMP <
-            0b010011_u16 => {self.op_comp(mode, reg, mem); }, // COMPARE
-            0b010100_u16 => {self.op_push(mode, reg, mem); }, // PUSH
-            0b010101_u16 => {self.op_pop(mode, reg, mem); }, // POP
-            0b010110_u16 => {self.op_call(mode, reg, mem); }, // CALL
-            0b010111_u16 => {self.op_ret(mem); }, // RETURN
-            0b011000_u16 => {self.op_shl(mode, reg, mem); }, // SHIFT LEFT
-            0b011001_u16 => {self.op_shr(mode, reg, mem); }, // LOGICAL SHIFT RIGHT
-            0b011010_u16 => {self.op_sar(mode, reg, mem); }, // ARITHMETIC SHIFT RIGHT
-            0b011011_u16 => {self.op_ssp(mode, reg, mem); }, // SET STACK POINTER
-            0b011100_u16 => {self.op_skip(mode, reg, mem); },
-            0b011101_u16 => {self.op_sys(mem); },
+            0b000001_u16 => {self.op_move(mode, reg, mem)?; }, // MOVE
+            0b000010_u16 => {self.op_add(mode, reg, mem)?; }, // ADD
+            0b000011_u16 => {self.op_sub(mode, reg, mem)?; }, // SUB
+            0b000100_u16 => {self.op_mul(mode, reg, mem)?; }, // MUL
+            0b000101_u16 => {self.op_div(mode, reg, mem)?; }, // DIV
+            0b000110_u16 => {self.op_mod(mode, reg, mem)?; }, // MOD
+            0b000111_u16 => {self.op_and(mode, reg, mem)?; }, // AND
+            0b001000_u16 => {self.op_or(mode, reg, mem)?; }, // OR
+            0b001001_u16 => {self.op_xor(mode, reg, mem)?; }, // XOR
+            0b001010_u16 => {self.op_not(mode, reg, mem)?; }, // NOT
+            0b001011_u16 => {self.op_j(mode, reg, mem)?; }, // JUMP
+            0b001100_u16 => {self.op_jz(mode, reg, mem)?; }, // JUMP Z
+            0b001101_u16 => {self.op_jc(mode, reg, mem)?; }, // JUMP C
+            0b001110_u16 => {self.op_jo(mode, reg, mem)?; }, // JUMP O
+            0b001111_u16 => {self.op_js(mode, reg, mem)?; }, // JUMP S
+            0b010000_u16 => {self.op_jnz(mode, reg, mem)?; }, // JUMP !Z
+            0b010001_u16 => {self.op_jg(mode, reg, mem)?; }, // JUMP >
+            0b010010_u16 => {self.op_jl(mode, reg, mem)?; }, // JUMP <
+            0b010011_u16 => {self.op_comp(mode, reg, mem)?; }, // COMPARE
+            0b010100_u16 => {self.op_push(mode, reg, mem)?; }, // PUSH
+            0b010101_u16 => {self.op_pop(mode, reg, mem)?; }, // POP
+            0b010110_u16 => {self.op_call(mode, reg, mem)?; }, // CALL
+            0b010111_u16 => {self.op_ret(mem)?; }, // RETURN
+            0b011000_u16 => {self.op_shl(mode, reg, mem)?; }, // SHIFT LEFT
+            0b011001_u16 => {self.op_shr(mode, reg, mem)?; }, // LOGICAL SHIFT RIGHT
+            0b011010_u16 => {self.op_sar(mode, reg, mem)?; }, // ARITHMETIC SHIFT RIGHT
+            0b011011_u16 => {self.op_ssp(mode, reg, mem)?; }, // SET STACK POINTER
+            0b011100_u16 => {self.op_skip(mode, reg, mem)?; },
+            0b011101_u16 => {self.op_sys(mem)?; },
+            0b011110_u16 => {self.op_kret(mem)?; },
             0b111111_u16 => {self.halted = true; println!("CPU halted"); self.debug(mem);}, // HALT
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

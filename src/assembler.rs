@@ -511,6 +511,9 @@ impl Parser {
         ops.insert("ret".to_string(), (OpKind::Zero, OperandLength::Zero));
         ops.insert("hlt".to_string(), (OpKind::Zero, OperandLength::Zero));
 
+        ops.insert("kret".to_string(), (OpKind::Zero, OperandLength::Zero));
+        ops.insert("sys".to_string(), (OpKind::Zero, OperandLength::Zero));
+
     
 
         ops.insert("jmp".to_string(), (OpKind::Single, OperandLength::Unsigned16));
@@ -963,6 +966,8 @@ impl Assembler {
             "sar"  => 0b011_010,
             "ssp"  => 0b011_011, // set stack pointer
             "skip" => 0b011_100,
+            "sys" => 0b011_101,
+            "kret" => 0b011_110,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });

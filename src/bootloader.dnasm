@@ -12,7 +12,7 @@ mov ri r6, 0
 mov ri r7, 0
 
 
-ssp i 0x3FFF                ; init sp
+ssp i 0x3FFF                ; init sp to kernel stack
 
 
                             ; clear vram, 0x800 thru 0x0FFF
