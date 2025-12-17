@@ -178,9 +178,11 @@ impl Bus {
         };
     }
 
-    pub fn set(&mut self, dest: u16, src: u8, mode: CPUMode, access: Access) {
-        self.
+    pub fn set(&mut self, dest: u16, src: u8, mode: CPUMode) -> Result<(), CPUExit> {
+        self.check_access(dest, mode, Access::W)?;
         self.ram[dest as usize] = src;
+
+        Ok(())
     }
 
     pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] {
