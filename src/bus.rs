@@ -161,21 +161,28 @@ impl Bus {
         self.check_access(address, mode, access)?;
 
         if self.mmio_range.contains(&address) {
-            return Ok(self.mmio_get(address));
+            return Ok(self.mmio_get(address)?);
         }
         return Ok(self.ram[address as usize]);
 
     }
 
-    pub fn mmio_get(&mut self, address: u16) -> u8 {
+    pub fn mmio_get(&mut self, address: u16) -> Result<u8, CPUExit> {
         println!("Getting from MMIO...");
-        match address {
+        let keyboard_status: u16 = self.mmio_range.start;
+        if address == keyboard_status {
+            return Ok(self.keyboard.status());
+        }
+        else if address == keyboard_status + 1 {
+            return Ok(self.keyboard.pop_key());
+        }
+        else {
+            return Err(CPUExit::Fault(Fault::IllegalMemAccess));
+        }
+    }
 
-            // Keyboard
-            0x1000 => {return self.keyboard.status()},
-            0x1001 => {println!("Popping key"); return self.keyboard.pop_key();},
-            _ => {println!("Unaccounted-for MMIO call"); return 0;},
-        };
+    pub fn force_set(&mut self, dest: u16, src: u8) {
+        self.ram[dest as usize] = src;
     }
 
     pub fn set(&mut self, dest: u16, src: u8, mode: CPUMode) -> Result<(), CPUExit> {
@@ -185,7 +192,7 @@ impl Bus {
         Ok(())
     }
 
-    pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] {
+    pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] { // ONLY EXPOSED TO VM ONLY EXPOSED TO VM ONLY EXPOSED TO VM
         return &self.ram[a as usize..b as usize];
     }
 

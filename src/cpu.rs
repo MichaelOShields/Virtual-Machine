@@ -107,9 +107,9 @@ pub enum CPUMode {
 
 #[derive(PartialEq, Debug)]
 pub enum Fault {
-    IllegalInstruction,
-    IllegalMemAccess,
-    UnknownAction,
+    IllegalInstruction, // ID 0b0011
+    IllegalMemAccess, // ID 0b0100
+    UnknownAction, // ID 0b101
 }
 
 #[derive(PartialEq, Debug)]
@@ -117,7 +117,7 @@ pub enum CPUExit {
     Timer, // when we need to return control to kernel; ID 0b0000
     Halt, // Kill current program; ID 0b0001
     Syscall, // R0-R3 give information re which syscall; ID 0b0010
-    Fault ( Fault ), // Something went wrong, probably w/ permissions; ID 0b0011
+    Fault ( Fault ), // Something went wrong, probably w/ permissions; ID starts @ 0b0011
 }
 
 
@@ -141,7 +141,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(trap_addr: u16, lim: u16) -> Self {
+    pub fn new(trap_addr: u16) -> Self {
         let flags = Flags {carry: false, sign: false, zero: false, overflow: false,};
 
         Self {
@@ -153,7 +153,7 @@ impl Cpu {
             mode: CPUMode::K,
             access: Access::W,
             instruction_ctr: 0,
-            instruction_lim: lim,
+            instruction_lim: 50, // allow 50 instructions before returning control
             kernel_trap_address: trap_addr,
         }
     }
@@ -1439,17 +1439,9 @@ impl Cpu {
     }
 
 
-    fn op_sys(&mut self, mem: &mut Bus) {
+    fn op_sys(&mut self, mem: &mut Bus) -> Result<(), CPUExit> {
 
-        self.mode = CPUMode::K;
-
-        let pc1: u8 = get_bits_msb(self.pc, 0, 7) as u8;
-        let pc2: u8 = get_bits_lsb(self.pc, 0, 7) as u8;
-
-        self.push(pc2, mem);
-        self.push(pc1, mem);
-
-        self.pc = self.kernel_trap_address;
+        return Err(CPUExit::Syscall);
     }
 
 
@@ -1664,7 +1656,7 @@ impl Cpu {
     }
 
     pub fn debug(&mut self, mem: &mut Bus) {
-        println!("Halted.\nInstruction: {:016b}\nPC: {:x}", match self.memget(self.pc, mem) {Ok(i) => i, Err(e) => 80085}, self.pc);
+        println!("Halted.\nInstruction: {:016b}\nPC: {:x}", match self.memget(self.pc, mem) {Ok(i) => i, Err(e) => 67}, self.pc);
         println!("Halting...");
         for inst in mem.get_range(self.pc - 5, self.pc + 5) {
             println!("Instruction: {:08b}", inst);
@@ -1672,8 +1664,38 @@ impl Cpu {
         self.status();
     }
 
-    fn handle_exit(&mut self, exit: CPUExit) {
-        ()
+    fn handle_exit(&mut self, exit: CPUExit, mem: &mut Bus) {
+
+        let exit_id: u8 = match exit {
+            CPUExit::Timer => 0b0000,
+            CPUExit::Halt => 0b0001,
+            CPUExit::Syscall => 0b0010,
+            CPUExit::Fault(f) => match f {
+                Fault::IllegalInstruction => 0b0011,
+                Fault::IllegalMemAccess => 0b0100,
+                Fault::UnknownAction => 0b0101,
+            }
+        };
+
+        self.mode = CPUMode::K;
+
+        let pc1: u8 = get_bits_msb(self.pc, 0, 7) as u8;
+        let pc2: u8 = get_bits_lsb(self.pc, 0, 7) as u8;
+
+
+        // save exit pc
+
+        self.push(pc2, mem);
+        self.push(pc1, mem);
+
+
+        // push exit reason
+        self.push(exit_id, mem);
+
+        self.pc = self.kernel_trap_address;
+
+
+
     }
 
     fn memget(&mut self, address: u16, mem: &mut Bus) -> Result<u8, CPUExit> {
@@ -1688,7 +1710,7 @@ impl Cpu {
     pub fn step(&mut self, mem: &mut Bus) {
         match self.act(mem) {
             Ok(()) => (),
-            Err(e) =>  self.handle_exit(e),
+            Err(e) =>  self.handle_exit(e, mem),
         }
     }
 
