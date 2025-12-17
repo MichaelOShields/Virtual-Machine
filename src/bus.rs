@@ -178,7 +178,8 @@ impl Bus {
         };
     }
 
-    pub fn set(&mut self, dest: u16, src: u8) {
+    pub fn set(&mut self, dest: u16, src: u8, mode: CPUMode, access: Access) {
+        self.
         self.ram[dest as usize] = src;
     }
 
