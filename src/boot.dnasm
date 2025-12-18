@@ -1,12 +1,13 @@
 .org 0x00
 
+
 mov ri r0, 0x23
 mov ri r1, 0xFF
-ssp r r0
+ssp r r0 ; kernel stack pointer
 
-mov ri r2, 0x40
 
-mov mr 0x7000, r2    ; kernel_data region - should be writable
-mov rm r1, 0x7000
 
-hlt
+mov ri r0, 0x04
+mov ri r1, 0x00
+
+jmp r r0

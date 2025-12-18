@@ -285,10 +285,6 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
 
 
 fn main() {
-    // if LEXING {
-    //     assembler::assem("src\\program.txt".to_string());
-    //     return;
-    // }
     
     let keyb = Keyboard::new();
     let ms = Mouse::new();
@@ -310,7 +306,7 @@ fn main() {
     let user_code  = 0x3800..0x7000;
     let user_data  = 0x7000..0x8800;
     let user_heap  = 0x8800..0xC800;
-    let user_stack = 0xC800..0xFFFF;
+    let user_stack = 0xC800..0xFFFF; // goes 0xFFFE
 
     let cpu = Cpu::new(kernel_traps.start);
     let vc  = VideoController::new(128, 128, vram.start);
@@ -340,9 +336,9 @@ fn main() {
 
 
 
-    load_assembly(&mut memory, "src\\kernel_entry".to_string());
+    load_assembly(&mut memory, "src\\kernel".to_string());
 
-    load_assembly(&mut memory, "src\\kernel_trap".to_string());
+    // load_assembly(&mut memory, "src\\kernel_trap".to_string());
 
     // return;
     let vm  = Vm::new(memory, vc, cpu);

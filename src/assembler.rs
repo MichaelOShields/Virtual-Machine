@@ -525,6 +525,8 @@ impl Parser {
         ops.insert("jg".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
         ops.insert("jl".to_string(),  (OpKind::Single, OperandLength::Unsigned16));
 
+        ops.insert("gsp".to_string(), (OpKind::Single, OperandLength::Unsigned16));
+
         ops.insert("call".to_string(), (OpKind::Single, OperandLength::Unsigned16));
 
         
@@ -967,6 +969,7 @@ impl Assembler {
             "skip" => 0b011_100,
             "sys" => 0b011_101,
             "kret" => 0b011_110,
+            "gsp" => 0b011_111,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });

@@ -1735,6 +1735,55 @@ impl Cpu {
         Ok(())
     }
 
+    fn op_gsp(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+        // println!("Jumping from: {:016b}", self.pc);
+        let s1 = get_bits_lsb(self.sp, 0, 7) as u8;
+        let s2 = get_bits_lsb(self.sp, 8, 15) as u8;
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                *r1 = s2;
+                let r2 = &mut self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+                *r2 = s1;
+
+
+                self.increment_pc(2);
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+
+                self.memset(m, s2, mem)?;
+                self.memset(m + 1, s1, mem)?;
+                self.increment_pc(2);
+
+            },
+            0b0010_u16 => {
+                // i
+                let i1 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem)?;
+
+                let m = (i1 as u16) << 8 | (i2 as u16);
+
+                self.memset(m, s2, mem)?;
+                self.memset(m + 1, s1, mem)?;
+
+                self.increment_pc(3);
+            },
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
+        }
+        Ok(())
+    }
+
+
     pub fn debug(&mut self, mem: &mut Bus) {
         println!("SP: {}", self.sp);
         println!("PC: {:0x}", self.pc);
@@ -1914,6 +1963,7 @@ impl Cpu {
             0b011100_u16 => {self.op_skip(mode, reg, mem)?; },
             0b011101_u16 => {self.op_sys(mem)?; },
             0b011110_u16 => {self.op_kret(mem)?; },
+            0b011111_u16 => {self.op_gsp(mode, reg, mem)?; }, // GET STACK PTR
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

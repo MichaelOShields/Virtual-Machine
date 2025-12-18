@@ -1,0 +1,296 @@
+.org 0x1200
+.const "space", 0
+.byte 0b00000_000
+.byte 0b00000_000
+.byte 0b00000_000
+.byte 0b00000_000
+.byte 0b00000_000
+.byte 0b00000_000
+.byte 0b00000_000
+
+.const "a", 1
+.byte 0b01110_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11111_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+
+.const "b", 2
+.byte 0b11110_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11110_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11110_000
+
+.const "c", 3
+.byte 0b01110_000
+.byte 0b10001_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10001_000
+.byte 0b01110_000
+
+
+.const "d", 4
+.byte 0b11110_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11110_000
+
+.const "e", 5
+.byte 0b11111_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b11111_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b11111_000
+
+.const "f", 6
+.byte 0b11111_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b11111_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+
+.const "g", 7
+.byte 0b11111_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10000_000
+.byte 0b10111_000
+.byte 0b10001_000
+.byte 0b11111_000
+
+.const "h", 8
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11111_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+
+.const "i", 9
+.byte 0b11111_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b11111_000
+
+.const "j", 10
+.byte 0b11111_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b10100_000
+.byte 0b10100_000
+.byte 0b11100_000
+
+.const "k", 11
+.byte 0b10001_000
+.byte 0b10010_000
+.byte 0b10100_000
+.byte 0b11000_000
+.byte 0b10100_000
+.byte 0b10010_000
+.byte 0b10001_000
+
+.const "l", 12
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b11111_000
+
+.const "m", 13
+.byte 0b10001_000
+.byte 0b11011_000
+.byte 0b10101_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+
+.const "n", 14
+.byte 0b11001_000
+.byte 0b11001_000
+.byte 0b11001_000
+.byte 0b10101_000
+.byte 0b10011_000
+.byte 0b10011_000
+.byte 0b10011_000
+
+.const "o", 15
+.byte 0b11111_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11111_000
+
+.const "p", 16
+.byte 0b11111_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11111_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+
+.const "q", 17
+.byte 0b11110_000
+.byte 0b10010_000
+.byte 0b10010_000
+.byte 0b10010_000
+.byte 0b10010_000
+.byte 0b11110_000
+.byte 0b00001_000
+
+.const "r", 18
+.byte 0b11111_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11111_000
+.byte 0b11000_000
+.byte 0b10100_000
+.byte 0b10010_000
+
+.const "s", 19
+.byte 0b11111_000
+.byte 0b10001_000
+.byte 0b10000_000
+.byte 0b11111_000
+.byte 0b00001_000
+.byte 0b10001_000
+.byte 0b11111_000
+
+.const "t", 20
+.byte 0b11111_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+
+.const "u", 21
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b11111_000
+
+.const "v", 22
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b01010_000
+.byte 0b01010_000
+.byte 0b00100_000
+
+.const "w", 23
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b10101_000
+.byte 0b10101_000
+.byte 0b10101_000
+.byte 0b11111_000
+
+.const "x", 24
+.byte 0b10001_000
+.byte 0b11011_000
+.byte 0b01010_000
+.byte 0b00100_000
+.byte 0b01110_000
+.byte 0b11011_000
+.byte 0b10001_000
+
+.const "y", 25
+.byte 0b10001_000
+.byte 0b10001_000
+.byte 0b01010_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+.byte 0b00100_000
+
+
+.byte 0b11111_000
+.byte 0b00001_000
+.byte 0b00010_000
+.byte 0b00100_000
+.byte 0b01000_000
+.byte 0b10000_000
+.byte 0b11111_000
+
+
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+.byte 0b10000_000
+
+; ends @ 0x12C3
+
+; basic kernel data at 0x12C4
+; basic kernel SP:
+
+
+; KSP at 0x12C4-0x12C5
+.byte 0x23
+.byte 0xFF
+
+
+; kernel regs start at 0x12C6
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+; user data starts @ 0x12CF:
+; USP @ 0x12CF
+.byte 0xFF
+.byte 0xFE
+
+; user regs start at 0x12D1:
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+
+; kernel mmio starts at 0x87FF
+
+.org 0x87FF

@@ -1,0 +1,106 @@
+.org 0x400
+
+jmp i entry
+
+
+
+entry:
+
+; clear regs
+mov ri r0, 0
+mov rr r1, r0
+mov rr r2, r0
+mov rr r3, r0
+mov rr r4, r0
+mov rr r5, r0
+mov rr r6, r0
+mov rr r7, r0
+jmp i loop
+
+
+; init user stack
+
+.org 0x600
+loop:
+    ; poll events
+    call i check_input
+
+
+    ; to run userprog, store kernel regs, store kernel stack ptr, set/pop user program stack ptr, run user program
+    call i save_kregs
+
+
+    jmp i loop
+
+
+
+
+; functions:
+halt:
+    hlt
+
+check_input:
+    mov rm r2, 0x3400
+    cmp ri r2, 1
+    jz i update_input_buffer
+
+    call i save_kregs
+    call i save_ksp
+
+    ; load user regs
+
+    call i load_uregs
+
+
+    kret
+
+    ret
+
+hlt
+
+update_input_buffer: ; last input stored at 0x12C4
+
+
+    mov rm r2, 0x3401
+
+    ; check if its esc
+    cmp ri r2, 52
+    jz i halt
+
+    ; otherwise continue
+
+    mov mr 0x87FF, r2 ; put into mem buffer
+
+    ; moved last input to 0x12C4
+    ret
+
+
+save_ksp:
+    gsp i 0x12C4
+    ret
+
+
+save_kregs:
+
+    mov mr 0x12C6, r0
+    mov mr 0x12C7, r1
+    mov mr 0x12C8, r2
+    mov mr 0x12C9, r3
+    mov mr 0x12CA, r4
+    mov mr 0x12CB, r5
+    mov mr 0x12CC, r6
+    mov mr 0x12CD, r7
+
+    ret
+
+lode_uregs:
+    mov rm 0x12D1, r0
+    mov rm 0x12D2, r1
+    mov rm 0x12D3, r2
+    mov rm 0x12D4, r3
+    mov rm 0x12D5, r4
+    mov rm 0x12D6, r5
+    mov rm 0x12D7, r6
+    mov rm 0x12D8, r7
+
+    ret
