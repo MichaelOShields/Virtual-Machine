@@ -1442,7 +1442,7 @@ impl Cpu {
         };
 
 
-        println!("SP: {:?}", self.sp);
+        // println!("SP: {:?}", self.sp);
         let p1 = ((0xFF00 & pos) >> 8) as u8;
         let p2 = 0xFF & pos as u8;
 
@@ -1450,13 +1450,13 @@ impl Cpu {
 
 
         self.push(p1, mem)?;
-        println!("SP: {:?}", self.sp);
+        // println!("SP: {:?}", self.sp);
         self.push(p2, mem)?;
 
 
         // print stack
         
-        println!("{:?}", mem.get_range(self.sp, self.sp + 5));
+        // println!("{:?}", mem.get_range(self.sp, self.sp + 5));
 
         Ok(self.op_j(mode, reg, mem)?)
     }
@@ -1831,7 +1831,7 @@ impl Cpu {
 
     pub fn step(&mut self, mem: &mut Bus) {
         self.access = Access::X;
-        self.debug(mem);
+        // self.debug(mem);
         match self.act(mem) {
             Ok(()) => (),
             Err(e) => self.handle_exit(e, mem),

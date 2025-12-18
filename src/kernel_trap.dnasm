@@ -1,7 +1,10 @@
 .org 0x1000
 
+mov ri r5, 0
+
+
 ; called when cpu error occurs
-pop r r0 ; pop error
+pop r r4 ; pop error
 
 hlt
 

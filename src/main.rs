@@ -146,7 +146,7 @@ impl ApplicationHandler for App {
                 self.vm.step_many(100);
                 if !self.vm.cpu.halted {
                     self.vm.cpu.status();
-                    self.vm.mem.status();
+                    // self.vm.mem.status();
                 }
                 
                 self.vm
