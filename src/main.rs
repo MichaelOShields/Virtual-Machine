@@ -336,7 +336,7 @@ fn main() {
 
 
     // load bootloader
-    load_assembly(&mut memory, "src\\fixing_calls".to_string());
+    load_assembly(&mut memory, "src\\boot".to_string());
 
 
 

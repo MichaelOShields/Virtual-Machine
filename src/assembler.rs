@@ -748,8 +748,7 @@ impl Parser {
             Some(m) => m,
             None => return Err(ParserError { message: "Unable to get mode".to_string() }),
         }.clone();
-        let operand = self.expect_operand()
-            .map_err(|_| ParserError { message: "Expected single operand".into() })?;
+        let operand = self.expect_operand()?;
         return Ok(Stmt::SingleOperation { opid, mode, operand, operand_length })
     }
 
