@@ -1,35 +1,12 @@
 .org 0x00
 
+mov ri r0, 0x23
+mov ri r1, 0xFF
+ssp r r0
 
-mov ri r0, 0x70
-mov ri r1, 0x00
+mov ri r2, 0x40
 
-mov ri r6, 0xFF
-
-mov ri r2, 255
-mov mr r0, r2
-
-mov rm r3, r0
+mov mr 0x7000, r2    ; kernel_data region - should be writable
+mov rm r1, 0x7000
 
 hlt
-
-
-
-ssp r r0 ; set kernel stack pointer
-
-
-; clear regs
-mov ri r0, 0
-mov rr r1, r0
-mov rr r2, r0
-mov rr r3, r0
-mov rr r4, r0
-mov rr r5, r0
-mov rr r6, r0
-mov rr r7, r0
-
-
-mov ri r0, 0x04
-mov ri r1, 0x00
-
-jmp r r0            ; jump to kernel entry

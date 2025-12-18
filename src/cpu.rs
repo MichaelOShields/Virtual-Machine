@@ -1508,6 +1508,7 @@ impl Cpu {
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 *r1 = val;
+                self.increment_pc(2);
 
             },
             0b0001_u16 => {
@@ -1520,6 +1521,7 @@ impl Cpu {
 
                 let val = self.pop(mem)?;
                 self.memset(m, val, mem)?;
+                self.increment_pc(2);
             },
             _ => println!("Unaccounted-for mode in pop"),
         }

@@ -280,7 +280,7 @@ impl Lexer {
                 '\r' => match self.peek_next_char()? {
                     '\n' => {self.advance(); return Ok(self.basic_token(Token::NEWLINE))},
                     '\t' => {self.advance(); return Ok(self.basic_token(Token::TAB))},
-                    _ => return Err(LexerError { message: "Unexpected \\r character.".to_string() }),
+                    _ => return Err(LexerError { message: "Unexpected /r character.".to_string() }),
                 },
                 '\n' => Ok(self.basic_token(Token::NEWLINE)),
                 '\t' => Ok(self.basic_token(Token::TAB)),
@@ -1011,9 +1011,10 @@ impl Assembler {
         return Ok((m1, m2));
     }
 
-    fn mem_to_reg_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>), AssemblerError> { // result is register to grab mem addr, vec<u8> is just loading the mem addr into R6 and R7
+    fn mem_to_reg_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>, Vec<u8>), AssemblerError> { // result is register to grab mem addr, first vec<u8> is just loading the mem addr into R6 and R7, second vec<u8> is restoring R6 and R7
         let reg: u8 = 6;
-        let mut instrs: Vec<u8> = vec![];
+        let mut setup: Vec<u8> = vec![];
+        let mut cleanup: Vec<u8> = vec![];
         match mem {
             Operand::Immediate(e) => match e {
                 Expr::Num(numex) => {
@@ -1021,30 +1022,30 @@ impl Assembler {
                     let savereg7: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
                     let mut loadingreg6 = self.assemble_single_op(savereg6)?;
                     let mut loadingreg7 = self.assemble_single_op(savereg7)?;
-                    instrs.append(&mut loadingreg6);
-                    instrs.append(&mut loadingreg7);
+                    setup.append(&mut loadingreg6);
+                    setup.append(&mut loadingreg7);
                     let (m1, m2) = self.get_addr_from_numexpr(numex)?;
-                    let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))), operand_length: OperandLength::Unsigned16 };
-                    let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))), operand_length: OperandLength::Unsigned16 };
+                    let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))), operand_length: OperandLength::Unsigned8 };
+                    let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))), operand_length: OperandLength::Unsigned8 };
                     let mut loadingm1 = self.assemble_double_op(movem1toreg6stmt)?;
                     let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
-                    instrs.append(&mut loadingm1);
-                    instrs.append(&mut loadingm2);
+                    setup.append(&mut loadingm1);
+                    setup.append(&mut loadingm2);
 
                     let loadreg6: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
                     let loadreg7: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
                     let mut loadingpopreg6 = self.assemble_single_op(loadreg6)?;
                     let mut loadingpopreg7 = self.assemble_single_op(loadreg7)?;
-                    instrs.append(&mut loadingpopreg7);
-                    instrs.append(&mut loadingpopreg6);
+                    cleanup.append(&mut loadingpopreg7);
+                    cleanup.append(&mut loadingpopreg6);
 
 
 
-                    return Ok((reg, instrs));
+                    return Ok((reg, setup, cleanup));
                 },
                 _ => return Err(AssemblerError { message: "Received unexpected immediate operand expression type.".to_string() })
             },
-            Operand::Register(n) => {return Ok((n, vec![]))},
+            Operand::Register(n) => {return Ok((n, vec![], vec![]))},
         };
 
     }
@@ -1070,6 +1071,7 @@ impl Assembler {
 
     fn assemble_double_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
         let mut instrs: Vec<u8> = vec![]; 
+        let mut cleanup: Vec<u8> = vec![]; // for memory ops that require cleanup
         if let Stmt::DoubleOperation { opid, mode, dest, src, operand_length } = op {
             let mut instr1: u8 = 0;
             instr1 |= self.opcode_from_opid(opid)? << 2;
@@ -1091,15 +1093,17 @@ impl Assembler {
             }
             else if mode == DoubleMode::Rm {
                 reg1 = self.register_from_operand(dest)?;
-                let (register2, mut setup_instrs) = self.mem_to_reg_from_operand(src)?;
+                let (register2, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(src)?;
                 reg2 = register2;
                 instrs.append(&mut setup_instrs);
+                cleanup.append(&mut cleanup_instrs);
             } // FINISH
             else if mode == DoubleMode::Mr {
-                let (register1, mut setup_instrs) = self.mem_to_reg_from_operand(dest)?;
+                let (register1, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(dest)?;
                 reg1 = register1;
                 reg2 = self.register_from_operand(src)?;
                 instrs.append(&mut setup_instrs);
+                cleanup.append(&mut cleanup_instrs);
             }
             else if mode == DoubleMode::Ri {
                 reg1 = self.register_from_operand(dest)?;
@@ -1154,6 +1158,7 @@ impl Assembler {
             instrs.push(instr1);
             instrs.push(instr2);
             instrs.append(&mut imm);
+            instrs.append(&mut cleanup); // add cleanup instructions at end
         }
         else {
             return Err(AssemblerError { message: "Unable to parse DoubleOperation".to_string() });
@@ -1163,7 +1168,8 @@ impl Assembler {
     }
 
     fn assemble_single_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
-        let mut instrs: Vec<u8> = vec![]; 
+        let mut instrs: Vec<u8> = vec![];
+        let mut cleanup: Vec<u8> = vec![]; // for memory ops that require cleanup
         println!("Single op: {:?}", op);
         if let Stmt::SingleOperation { opid, mode, operand, operand_length } = op {
             let mut instr1: u8 = 0;
@@ -1186,10 +1192,11 @@ impl Assembler {
                 reg1 = self.register_from_operand(operand)?;
             }
             else if mode == SingleMode::M {
-                let (register1, mut setup_instrs) = self.mem_to_reg_from_operand(operand)?;
+                let (register1, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(operand)?;
                 reg1 = register1;
                 
                 instrs.append(&mut setup_instrs);
+                cleanup.append(&mut cleanup_instrs);
             }
             else if mode == SingleMode::I {
                 match operand_length {
@@ -1239,6 +1246,7 @@ impl Assembler {
             if !imm.is_empty() {
                 instrs.append(&mut imm);
             }
+            instrs.append(&mut cleanup); // add cleanup instructions at end
         }
         else {
             return Err(AssemblerError { message: "Unable to parse SingleOperation".to_string() });
