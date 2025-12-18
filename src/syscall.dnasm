@@ -1,4 +1,0 @@
-.org 0x1000
-
-
-; handle CPUExit, will be in R0 (probably)

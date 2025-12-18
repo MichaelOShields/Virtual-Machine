@@ -338,6 +338,11 @@ fn main() {
 
     load_assembly(&mut memory, "src\\kernel".to_string());
 
+    load_assembly(&mut memory, "src\\kernel_data".to_string());
+
+
+    load_assembly(&mut memory, "src\\user".to_string());
+
     // load_assembly(&mut memory, "src\\kernel_trap".to_string());
 
     // return;

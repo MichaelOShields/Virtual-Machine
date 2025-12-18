@@ -1,36 +1,37 @@
 .org 0x400
 
-jmp i entry
+jmp i kernel
 
 
 
-entry:
+kernel:
 
-; clear regs
-mov ri r0, 0
-mov rr r1, r0
-mov rr r2, r0
-mov rr r3, r0
-mov rr r4, r0
-mov rr r5, r0
-mov rr r6, r0
-mov rr r7, r0
-jmp i loop
+    call i load_kregs
 
-
-; init user stack
-
-.org 0x600
-loop:
     ; poll events
     call i check_input
 
 
     ; to run userprog, store kernel regs, store kernel stack ptr, set/pop user program stack ptr, run user program
     call i save_kregs
+    call i save_ksp
+
+    ; set usp
+    mov rm r0, 0x12CE
+    mov rm r1, 0x12CF
+
+    ssp r r0
+
+    ; load user regs
+    call i load_uregs
+
+    push i 0x38 ; big endian
+    push i 0x00
+
+    kret
 
 
-    jmp i loop
+    hlt
 
 
 
@@ -44,19 +45,8 @@ check_input:
     cmp ri r2, 1
     jz i update_input_buffer
 
-    call i save_kregs
-    call i save_ksp
-
-    ; load user regs
-
-    call i load_uregs
-
-
-    kret
-
     ret
 
-hlt
 
 update_input_buffer: ; last input stored at 0x12C4
 
@@ -80,6 +70,19 @@ save_ksp:
     ret
 
 
+load_kregs:
+
+    mov rm r0, 0x12C6
+    mov rm r1, 0x12C7
+    mov rm r2, 0x12C8
+    mov rm r3, 0x12C9
+    mov rm r4, 0x12CA
+    mov rm r5, 0x12CB
+    mov rm r6, 0x12CC
+    mov rm r7, 0x12CD
+
+    ret
+
 save_kregs:
 
     mov mr 0x12C6, r0
@@ -93,14 +96,55 @@ save_kregs:
 
     ret
 
-lode_uregs:
-    mov rm 0x12D1, r0
-    mov rm 0x12D2, r1
-    mov rm 0x12D3, r2
-    mov rm 0x12D4, r3
-    mov rm 0x12D5, r4
-    mov rm 0x12D6, r5
-    mov rm 0x12D7, r6
-    mov rm 0x12D8, r7
+load_uregs:
 
+    mov rm r0, 0x12D0
+    mov rm r1, 0x12D1
+    mov rm r2, 0x12D2
+    mov rm r3, 0x12D3
+    mov rm r4, 0x12D4
+    mov rm r5, 0x12D5
+    mov rm r6, 0x12D6
+    mov rm r7, 0x12D7
+
+    ret
+
+save_uregs:
+
+    mov mr 0x12D0, r0
+    mov mr 0x12D1, r1
+    mov mr 0x12D2, r2
+    mov mr 0x12D3, r3
+    mov mr 0x12D4, r4
+    mov mr 0x12D5, r5
+    mov mr 0x12D6, r6
+    mov mr 0x12D7, r7
+
+    ret
+
+
+
+
+
+; KERNEL TRAP:
+
+.org 0x1000 ; kernel trap
+
+ktrap_catch:
+    call i save_uregs
+
+    pop r r0 ; pop exit reason?
+
+    ; diagnose cpuexit
+
+    cmp ri r0, 0b0000 ; timer, return control to kernel
+    jz i kernel
+    cmp ri 0b0001 ; halt, since it's a cpu exit we kill the application
+
+    cmp ri 0b0010
+
+
+
+
+handle_syscall:
     ret

@@ -273,12 +273,15 @@
 .byte 0
 .byte 0
 
-; user data starts @ 0x12CF:
-; USP @ 0x12CF
+; user data starts @ 0x12CE:
+; USP @ 0x12CE
+
+.org 0x12CE
 .byte 0xFF
 .byte 0xFE
 
-; user regs start at 0x12D1:
+.org 0x12D0
+; user regs start at 0x12D0:
 .byte 0
 .byte 0
 .byte 0

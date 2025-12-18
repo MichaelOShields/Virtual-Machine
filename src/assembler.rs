@@ -514,6 +514,8 @@ impl Parser {
         ops.insert("kret".to_string(), (OpKind::Zero, OperandLength::Zero));
         ops.insert("sys".to_string(), (OpKind::Zero, OperandLength::Zero));
 
+        ops.insert("pnk".to_string(), (OpKind::Zero, OperandLength::Zero));
+
     
 
         ops.insert("jmp".to_string(), (OpKind::Single, OperandLength::Unsigned16));
@@ -970,6 +972,7 @@ impl Assembler {
             "sys" => 0b011_101,
             "kret" => 0b011_110,
             "gsp" => 0b011_111,
+            "pnk" => 0b100_000,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });

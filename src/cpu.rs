@@ -1486,8 +1486,8 @@ impl Cpu {
 
     fn op_kret(&mut self, mem: &mut Bus) -> Result<(), CPUExit> { // KERNEL RETURN; return after syscall/exit
 
-        let pc1 = self.pop(mem)?;
         let pc2 = self.pop(mem)?;
+        let pc1 = self.pop(mem)?;
         self.pc = (pc1 as u16) << 8 | pc2 as u16;
 
         self.mode = CPUMode::U;
@@ -1737,8 +1737,8 @@ impl Cpu {
 
     fn op_gsp(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         // println!("Jumping from: {:016b}", self.pc);
-        let s1 = get_bits_lsb(self.sp, 0, 7) as u8;
-        let s2 = get_bits_lsb(self.sp, 8, 15) as u8;
+        let s1 = get_bits_msb(self.sp, 0, 7) as u8;
+        let s2 = get_bits_msb(self.sp, 8, 15) as u8;
         match mode {
             0b0000_u16 => {
                 // r
@@ -1783,13 +1783,20 @@ impl Cpu {
         Ok(())
     }
 
+    fn op_pnk(&mut self, mem: &mut Bus) {
+        self.status();
+        self.debug(mem);
+        panic!("Panicked @ request.");
+    }
+    
+
 
     pub fn debug(&mut self, mem: &mut Bus) {
         println!("SP: {}", self.sp);
         println!("PC: {:0x}", self.pc);
         println!("Mode: {:?}", self.mode);
         println!("Access: {:?}", self.access);
-        println!("Instruction: {:08b}", match self.memget(self.pc, mem) {Ok(i) => i, Err(e) => {println!("Exit: {:?}", e); 67}});
+        println!("Instruction: {:08b}", mem.force_get(self.pc));
         let size = mem.get_size() as i64;
         // println!("size: {}", size);
         let range = 0;
@@ -1964,6 +1971,7 @@ impl Cpu {
             0b011101_u16 => {self.op_sys(mem)?; },
             0b011110_u16 => {self.op_kret(mem)?; },
             0b011111_u16 => {self.op_gsp(mode, reg, mem)?; }, // GET STACK PTR
+            0b100_000_u16 => {self.op_pnk(mem); }, // PANIC
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

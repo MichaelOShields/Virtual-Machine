@@ -155,7 +155,6 @@ impl Bus {
     pub fn get_size(&mut self) -> u16 {
         return (self.ram.len() - 1) as u16;
     }
-
     pub fn check_access(&mut self, address: u16, mode: CPUMode, access: Access) -> Result<(), CPUExit> {
 
         for range in &self.ranges {
