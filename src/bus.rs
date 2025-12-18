@@ -10,6 +10,7 @@ pub enum MemRange {
     KernelData ( Range<u16> ),
     KernelHeap ( Range<u16> ),
     KernelStack ( Range<u16> ),
+    Vram ( Range<u16> ),
     Mmio ( Range<u16> ),
 
     UserCode ( Range<u16> ),
@@ -35,6 +36,7 @@ impl MemRange {
             | MemRange::KernelData(r)
             | MemRange::KernelHeap(r)
             | MemRange::KernelStack(r)
+            | MemRange::Vram(r)
             | MemRange::Mmio(r)
             | MemRange::UserCode(r)
             | MemRange::UserData(r)
@@ -51,6 +53,7 @@ impl MemRange {
             Self::KernelData(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             Self::KernelHeap(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             Self::KernelStack(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
+            Self::Vram(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             Self::Mmio(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             
             Self::UserCode(_) => 
@@ -115,6 +118,7 @@ impl Bus {
         kernel_data: Range<u16>,
         kernel_heap: Range<u16>,
         kernel_stack: Range<u16>,
+        vram: Range<u16>,
         mmio: Range<u16>,
 
         user_code: Range<u16>,
@@ -129,13 +133,14 @@ impl Bus {
         let kernel_data= MemRange::KernelData(kernel_data);
         let kernel_heap= MemRange::KernelHeap(kernel_heap);
         let kernel_stack= MemRange::KernelStack(kernel_stack);
+        let vram = MemRange::Vram(vram);
         let mmio= MemRange::Mmio(mmio);
 
         let user_code = MemRange::UserCode(user_code);
         let user_data= MemRange::UserData(user_data);
         let user_heap= MemRange::UserHeap(user_heap);
         let user_stack= MemRange::UserStack(user_stack);
-        let ranges = vec![bootloader, kernel_core, kernel_traps, kernel_data, kernel_heap, kernel_stack, mmio, user_code, user_data, user_heap, user_stack];
+        let ranges = vec![bootloader, kernel_core, kernel_traps, kernel_data, kernel_heap, kernel_stack, vram, mmio, user_code, user_data, user_heap, user_stack];
         
         Self {
             ram: [0; 65536],
@@ -147,11 +152,41 @@ impl Bus {
         }
     }
 
-    fn check_access(&mut self, address: u16, mode: CPUMode, access: Access) -> Result<(), CPUExit> {
+    pub fn get_size(&mut self) -> u16 {
+        return (self.ram.len() - 1) as u16;
+    }
+
+    pub fn check_access(&mut self, address: u16, mode: CPUMode, access: Access) -> Result<(), CPUExit> {
 
         for range in &self.ranges {
+            let actual_range = match range {
+                MemRange::Bootloader(r)
+                | MemRange::KernelCore(r)
+                | MemRange::KernelTraps(r)
+                | MemRange::KernelData(r)
+                | MemRange::KernelHeap(r)
+                | MemRange::KernelStack(r)
+                | MemRange::Vram(r)
+                | MemRange::Mmio(r)
+                | MemRange::UserCode(r)
+                | MemRange::UserData(r)
+                | MemRange::UserHeap(r)
+                | MemRange::UserStack(r) => r,
+            };
+            if actual_range.contains(&address) {
+                // println!("Range: {:?}", range);
+                let result = range.check_access(mode, access);
+                match &result {
+                    Ok(()) => (),
+                    Err(e) => {
+                        println!("Got CPUExit {:?} at range {:?}", e, range);
+                        ()
+                    }
+                }
+                return result;
+            }
         }
-
+        
         Err(CPUExit::Fault(Fault::IllegalMemAccess))
 
     }
@@ -185,14 +220,19 @@ impl Bus {
         self.ram[dest as usize] = src;
     }
 
-    pub fn set(&mut self, dest: u16, src: u8, mode: CPUMode) -> Result<(), CPUExit> {
-        self.check_access(dest, mode, Access::W)?;
+    pub fn force_get(&mut self, dest: u16) -> u8 {
+        return self.ram[dest as usize];
+    }
+
+    pub fn set(&mut self, dest: u16, src: u8, mode: CPUMode, access: Access) -> Result<(), CPUExit> {
+        self.check_access(dest, mode, access)?;
         self.ram[dest as usize] = src;
 
         Ok(())
     }
 
     pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] { // ONLY EXPOSED TO VM ONLY EXPOSED TO VM ONLY EXPOSED TO VM
+        // println!("{:?}", &self.ram[a as usize..b as usize]);
         return &self.ram[a as usize..b as usize];
     }
 

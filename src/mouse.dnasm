@@ -116,7 +116,7 @@ handle_right: ; 28
     ret
 
 handle_input:
-    mov ri r6, 0x10
+    mov ri r6, 0x34
     mov ri r7, 0x01 ; input
     mov rm r5, r6 ; input id is stored in r5
     
@@ -142,7 +142,7 @@ handle_input:
 
 
 check_if_keys: ; works
-    mov ri r6, 0x10
+    mov ri r6, 0x34
     mov ri r7, 0x00
     mov rm r5, r6
     cmp ri r5, 1            ; jz if there is an available input
@@ -160,8 +160,8 @@ render:
 ; render
 
 start:
-mov ri r0, hi(0x800)
-mov ri r1, lo(0x800)
+mov ri r0, hi(0x24)
+mov ri r1, lo(0x00)
 mov ri r3, 0b1000_0000 ; will be shr/shl as cursor moves
 
 loop:
@@ -171,4 +171,10 @@ loop:
     jmp i loop
 
 
+hlt
+
+
+
+.org 0x1000
+pop r r7
 hlt

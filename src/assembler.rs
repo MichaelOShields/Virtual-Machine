@@ -1064,6 +1064,8 @@ impl Assembler {
         instr1 |= self.opcode_from_opid(opid)? << 2;
         instrs.push(instr1);
 
+        instrs.push(0b0000_0000);
+
         return Ok(instrs);
     }
 

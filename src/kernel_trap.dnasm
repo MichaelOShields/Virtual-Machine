@@ -1,0 +1,7 @@
+.org 0x1000
+
+; called when cpu error occurs
+pop r r0 ; pop error
+
+hlt
+

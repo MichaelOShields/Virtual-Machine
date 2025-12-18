@@ -151,7 +151,7 @@ impl ApplicationHandler for App {
                 
                 self.vm
                     .video
-                    .update_framebuffer(self.vm.mem.get_range(0x800, 0xFFF+1));
+                    .update_framebuffer(self.vm.mem.get_range(0x2400, 0x3200));
 
                 // ---- blit VM framebuffer into softbuffer surface -------------
                 let surf  = self.surface.as_mut().unwrap();
@@ -313,6 +313,7 @@ fn main() {
     let user_stack = 0xC800..0xFFFF;
 
     let cpu = Cpu::new(kernel_traps.start);
+    let vc  = VideoController::new(128, 128, vram.start);
 
     let mut memory = Bus::new(
         ms,
@@ -324,6 +325,7 @@ fn main() {
         kernel_data,
         kernel_heap,
         kernel_stack,
+        vram,
         mmio,
 
         user_code,
@@ -333,21 +335,16 @@ fn main() {
     );
 
 
-
-    // load_bootloader(&mut memory);
-
     // load bootloader
-    load_assembly(&mut memory, "src\\bootloader".to_string());
-    // println!("{:?}", memory.get_range(0x00, 0x10));
+    load_assembly(&mut memory, "src\\fixing_calls".to_string());
 
 
 
-    load_assembly(&mut memory, "src\\mouse".to_string());
+    load_assembly(&mut memory, "src\\kernel_entry".to_string());
+
+    load_assembly(&mut memory, "src\\kernel_trap".to_string());
 
     // return;
-
-
-    let vc  = VideoController::new(128, 128, vram.start);
     let vm  = Vm::new(memory, vc, cpu);
 
     

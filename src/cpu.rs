@@ -126,8 +126,6 @@ pub struct Cpu {
     pub regs: [u8; 8],
     pub flags: Flags,
     pub pc: u16,
-    pub ksp: u16,
-    pub usp: u16, // user sp
     pub sp: u16, // current sp
     pub halted: bool,
     pub mode: CPUMode,
@@ -150,12 +148,10 @@ impl Cpu {
             regs: [0; 8],
             flags: flags,
             pc: 0,
-            usp: 0,
-            ksp: 0,
             sp: 0,
             halted: false,
             mode: CPUMode::K,
-            access: Access::W,
+            access: Access::X,
             instruction_ctr: 0,
             instruction_lim: 50, // allow 50 instructions before returning control
             kernel_trap_address: trap_addr,
@@ -167,19 +163,36 @@ impl Cpu {
     }
 
     fn get_operand(&mut self, mem: &mut Bus) -> Result<u8, CPUExit> {
-        Ok(self.memget(self.pc + 0x02, mem)?)
+        let result = self.memget(self.pc + 0x02, mem)?;
+        self.access = Access::X;
+        Ok(result)
     }
     // comment so i can commit an idea
 
     fn push(&mut self, val: u8, mem: &mut Bus) -> Result<(), CPUExit> {
-        self.memset(self.sp, val, mem)?;
+        // self.debug(mem);
+
+
         self.sp -= 1;
+
+        self.memset(self.sp, val, mem)?;
+        // match self.mode {
+        //     CPUMode::K => self.ksp = self.sp,
+        //     CPUMode::U => self.usp = self.sp,
+        // }
         Ok(())
     }
 
     fn pop(&mut self, mem: &mut Bus) -> Result<u8, CPUExit> {
+
         let v = self.memget(self.sp, mem)?;
+
         self.sp += 1;
+
+        // match self.mode {
+        //     CPUMode::K => self.ksp = self.sp,
+        //     CPUMode::U => self.usp = self.sp,
+        // }
         Ok(v)
     }
 
@@ -226,7 +239,7 @@ impl Cpu {
 
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                self.memset(m1, r2, mem);
+                self.memset(m1, r2, mem)?;
                 
                 self.increment_pc(2);
 
@@ -363,7 +376,7 @@ impl Cpu {
 
                 let (result, carry) = a.overflowing_add(b);
 
-                self.memset(m1, r2 + m1val, mem);
+                self.memset(m1, r2 + m1val, mem)?;
 
                 self.signs_add(a, b, result, carry);
                 
@@ -411,7 +424,7 @@ impl Cpu {
 
                 let (r, c) = a.overflowing_add(b);
 
-                self.memset(m1, r, mem);
+                self.memset(m1, r, mem)?;
 
                 self.signs_add(a, b, r, c);
 
@@ -521,7 +534,7 @@ impl Cpu {
                 let m1val = self.memget(m1, mem)?;
 
                 let (result, borrow) = m1val.overflowing_sub(i2);
-                self.memset(m1, result, mem);
+                self.memset(m1, result, mem)?;
                 self.signs_sub(m1val, i2, result, borrow);
 
                 self.increment_pc(3);
@@ -1130,7 +1143,11 @@ impl Cpu {
                 let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
+
+
                 let m1val: u8 = self.memget(m1, mem)?;
+
+                self.memset(m1, !r2, mem)?;
                 
                 self.increment_pc(2);
 
@@ -1176,7 +1193,7 @@ impl Cpu {
             0b0000_u16 => {
                 // r
                 
-                let r = self.regs[get_bits_lsb(reg, 3, 5) as usize].clone();
+                let r = self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 self.increment_pc(2);
                 Ok(r)
@@ -1197,11 +1214,11 @@ impl Cpu {
             },
             0b0010_u16 => {
                 // i
-                let i = self.get_operand(mem);
+                let i = self.get_operand(mem)?;
 
                 self.increment_pc(3);
 
-                return i;
+                Ok(i)
 
             },
             _ => Err(CPUExit::Fault(Fault::UnknownAction))
@@ -1252,7 +1269,7 @@ impl Cpu {
 
     fn jump_cond(&mut self, mode: u16, reg: u16, mem: &mut Bus, boolean: bool) -> Result<(), CPUExit> {
         if boolean {
-            self.op_j(mode, reg, mem);
+            self.op_j(mode, reg, mem)?;
         }
         else {
             match mode {
@@ -1417,15 +1434,29 @@ impl Cpu {
 
     fn op_call(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
 
-        let pos = self.pc.clone() + match mode {
+        let pos = self.pc + match mode {
             0b0000_u16 => 2, // r
             0b0001_u16 => 2, // m
             0b0010_u16 => 4, // i
-            _ => 0, // not understood
+            _ => return Err(CPUExit::Fault(Fault::UnknownAction)), // not understood
         };
 
-        self.push((pos >> 8) as u8, mem)?;
-        self.push(pos as u8, mem)?;
+
+        println!("SP: {:?}", self.sp);
+        let p1 = ((0xFF00 & pos) >> 8) as u8;
+        let p2 = 0xFF & pos as u8;
+
+        // panic!("p1: {:08b}\np2: {:08b}\npos:{:016b}", p1, p2, pos);
+
+
+        self.push(p1, mem)?;
+        println!("SP: {:?}", self.sp);
+        self.push(p2, mem)?;
+
+
+        // print stack
+        
+        println!("{:?}", mem.get_range(self.sp, self.sp + 5));
 
         Ok(self.op_j(mode, reg, mem)?)
     }
@@ -1435,9 +1466,14 @@ impl Cpu {
         let m2 = self.pop(mem)?;
         let m1 = self.pop(mem)?;
 
+        // println!("m{}", (m1 as u16) << 8 | (m2 as u16));
+        
+        self.access = Access::X;
 
 
         self.pc = (m1 as u16) << 8 | (m2 as u16);
+        // println!("sp{}", self.pc);
+        // panic!();
 
         Ok(())
     }
@@ -1453,10 +1489,6 @@ impl Cpu {
         let pc1 = self.pop(mem)?;
         let pc2 = self.pop(mem)?;
         self.pc = (pc1 as u16) << 8 | pc2 as u16;
-
-        self.ksp = self.sp;
-
-        self.sp = self.usp;
 
         self.mode = CPUMode::U;
 
@@ -1600,6 +1632,10 @@ impl Cpu {
         Ok(())
     }
 
+    fn setsp(&mut self, addr: u16, mem: &mut Bus) {
+
+    }
+
     fn op_ssp(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         match mode {
             0b0000_u16 => {
@@ -1611,6 +1647,10 @@ impl Cpu {
                 let m: u16 = (r11 as u16) << 8 | (r12 as u16);
 
                 self.sp = m;
+                // match self.mode {
+                //     CPUMode::K => self.ksp = m,
+                //     CPUMode::U => self.usp = m,
+                // }
                 self.increment_pc(2);
             },
             0b0001_u16 => {
@@ -1622,7 +1662,14 @@ impl Cpu {
 
                 let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
 
-                self.sp = (self.memget(m, mem)? as u16) << 8 | (self.memget(m + 1, mem)? as u16);
+                let mval = (self.memget(m, mem)? as u16) << 8 | (self.memget(m + 1, mem)? as u16);
+
+                self.sp = mval;
+
+                // match self.mode {
+                //     CPUMode::K => self.ksp = mval,
+                //     CPUMode::U => self.usp = mval,
+                // }
 
                 self.increment_pc(2);
 
@@ -1636,11 +1683,20 @@ impl Cpu {
                 let i = (i1 as u16) << 8 | (i2 as u16);
 
                 self.sp = i;
+                // match self.mode {
+                //     CPUMode::K => self.ksp = i,
+                //     CPUMode::U => self.usp = i,
+                // }
+
                 self.increment_pc(3);
             },
             _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
+
+        // self.debug(mem);
         Ok(())
+
+
     }
 
     fn op_skip(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> { // skip n byte instructions
@@ -1678,9 +1734,23 @@ impl Cpu {
     }
 
     pub fn debug(&mut self, mem: &mut Bus) {
-        println!("Halted.\nInstruction: {:016b}\nPC: {:x}", match self.memget(self.pc, mem) {Ok(i) => i, Err(e) => 67}, self.pc);
-        println!("Halting...");
-        for inst in mem.get_range(self.pc - 5, self.pc + 5) {
+        println!("SP: {}", self.sp);
+        println!("PC: {:0x}", self.pc);
+        println!("Mode: {:?}", self.mode);
+        println!("Access: {:?}", self.access);
+        println!("Instruction: {:08b}", match self.memget(self.pc, mem) {Ok(i) => i, Err(e) => {println!("Exit: {:?}", e); 67}});
+        let size = mem.get_size() as i64;
+        // println!("size: {}", size);
+        let range = 0;
+        let mut start = self.pc as i64 - range;
+        if start < 0 {
+            start = 0;
+        };
+        let mut end = self.pc as i64 + range;
+        if end > size {
+            end = size;
+        }
+        for inst in mem.get_range(start as u16, end as u16) {
             println!("Instruction: {:08b}", inst);
         }
         self.status();
@@ -1688,56 +1758,95 @@ impl Cpu {
 
     fn handle_exit(&mut self, exit: CPUExit, mem: &mut Bus) {
 
-        let exit_id: u8 = match exit {
-            CPUExit::Timer => 0b0000,
-            CPUExit::Halt => 0b0001,
-            CPUExit::Syscall => 0b0010,
-            CPUExit::Fault(f) => match f {
-                Fault::IllegalInstruction => 0b0011,
-                Fault::IllegalMemAccess => 0b0100,
-                Fault::UnknownAction => 0b0101,
-            }
-        };
+        if !self.halted {
 
-        self.usp = self.sp;
-        self.sp = self.ksp;
+            self.mode = CPUMode::K;
 
-        self.mode = CPUMode::K;
+            self.access = Access::X;
 
-        let pc1: u8 = get_bits_msb(self.pc, 0, 7) as u8;
-        let pc2: u8 = get_bits_lsb(self.pc, 0, 7) as u8;
+            let exit_id: u8 = match exit {
+                CPUExit::Timer => 0b0000,
+                CPUExit::Halt => 0b0001,
+                CPUExit::Syscall => 0b0010,
+                CPUExit::Fault(f) => match f {
+                    Fault::IllegalInstruction => 0b0011,
+                    Fault::IllegalMemAccess => 0b0100,
+                    Fault::UnknownAction => 0b0101,
+                }
+            };
 
+            let pc1: u8 = get_bits_msb(self.pc, 0, 7) as u8;
+            let pc2: u8 = get_bits_msb(self.pc, 8, 15) as u8;
 
-        // save exit pc
-
-        self.push(pc2, mem);
-        self.push(pc1, mem);
+            println!("pc estimate: {:0x}", (pc1 as u16) << 8 | pc2 as u16);
+            println!("SP: {:0x}", self.sp);
 
 
-        // push exit reason
-        self.push(exit_id, mem);
+            // save exit pc
+            
 
-        self.pc = self.kernel_trap_address;
+            match self.push(pc2, mem) {
+                Ok(()) => (),
+                Err(e) => {
+                    println!("push failed w/ exit {:?}", e);
+                    // self.debug(mem);
+                    panic!();
+                }
+            };
+            match self.push(pc1, mem)  {
+                Ok(()) => (),
+                Err(_e) => {println!("push failed"); return;}
+            };
 
+
+            // push exit reason
+            match self.push(exit_id, mem) {
+                Ok(()) => (),
+                Err(_e) => {println!("push failed"); return;}
+            };
+
+            self.pc = self.kernel_trap_address;
+        }
+        else {
+            panic!("Tried to handle exit but full halted");
+        }
 
 
     }
 
     fn memget(&mut self, address: u16, mem: &mut Bus) -> Result<u8, CPUExit> {
         self.access = Access::R;
+        Ok(self.memgetcore(address, mem)?)
+    }
+
+    fn memgetcore(&mut self, address: u16, mem: &mut Bus) -> Result<u8, CPUExit> {
         Ok(mem.get(address, self.mode, self.access)?)
     }
 
     fn memset(&mut self, dest: u16, src: u8, mem: &mut Bus) -> Result<(), CPUExit> {
         self.access = Access::W;
-        Ok(mem.set(dest, src, self.mode)?)
+        Ok(mem.set(dest, src, self.mode, self.access)?)
 
     }
 
     pub fn step(&mut self, mem: &mut Bus) {
+        self.access = Access::X;
+        self.debug(mem);
         match self.act(mem) {
             Ok(()) => (),
-            Err(e) =>  self.handle_exit(e, mem),
+            Err(e) => self.handle_exit(e, mem),
+        }
+    }
+
+    fn op_halt(&mut self, mem: &mut Bus) -> Result<(), CPUExit> {
+        match self.mode {
+            CPUMode::K => {
+                self.halted = true;
+                println!("Halting...");
+                self.debug(mem);
+                Ok(())
+            },
+            CPUMode::U => return Err(CPUExit::Halt),
         }
     }
 
@@ -1749,8 +1858,8 @@ impl Cpu {
 
 
         let instruction: u16 =
-        (self.memget(self.pc, mem)? as u16) << 8
-        | ((self.memget(self.pc + 1, mem)? as u16));
+        (self.memgetcore(self.pc, mem)? as u16) << 8
+        | ((self.memgetcore(self.pc + 1, mem)? as u16));
 
         let opcode = get_bits_msb(instruction, 0, 5);
         let mode = get_bits_msb(instruction, 6, 9);
@@ -1803,7 +1912,7 @@ impl Cpu {
             0b011100_u16 => {self.op_skip(mode, reg, mem)?; },
             0b011101_u16 => {self.op_sys(mem)?; },
             0b011110_u16 => {self.op_kret(mem)?; },
-            0b111111_u16 => {self.halted = true; println!("CPU halted"); self.debug(mem);}, // HALT
+            0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);
                 println!("Halting...");

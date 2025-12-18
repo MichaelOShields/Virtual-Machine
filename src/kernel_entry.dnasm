@@ -1,0 +1,54 @@
+.org 0x400
+
+jmp i start
+
+
+; kernel entry point
+; init vars then send to kernel loop
+
+; functions:
+inc_r0:
+    add ri r0, 1
+    ret
+
+inc_r1:
+    add ri r1, 1
+    jc i inc_r0
+    ret
+
+clear_pos: ; assumes [r0:r1] is addr & r2 is free
+    mov ri r2, 0
+    mov mr r0, r2
+    ret
+
+
+start:
+
+
+
+; clear kernel heap (testing not clearing stack):
+
+; kernel heap: 0x1800
+mov ri r0, 0x18
+mov ri r1, 0x00
+
+khs_loop:
+
+call i clear_pos
+
+hlt
+
+call i inc_r1
+cmp ri r0, 0x20 ; ends at 0x2000
+jnz i khs_loop
+
+jz i check_khs_r1
+
+check_khs_r1:
+cmp ri r1, 0x00
+jz i end
+ret
+
+
+end:
+hlt

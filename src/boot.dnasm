@@ -1,0 +1,24 @@
+.org 0x00
+
+
+mov ri r0, 0x23
+mov ri r1, 0xFF
+
+ssp r r0 ; set kernel stack pointer
+
+
+; clear regs
+mov ri r0, 0
+mov rr r1, r0
+mov rr r2, r0
+mov rr r3, r0
+mov rr r4, r0
+mov rr r5, r0
+mov rr r6, r0
+mov rr r7, r0
+
+
+mov ri r0, 0x04
+mov ri r1, 0x00
+
+jmp r r0            ; jump to kernel entry
