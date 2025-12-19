@@ -119,7 +119,7 @@ impl Cpu {
         Ok(v)
     }
 
-    fn op_move(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+    fn op_mov(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         // println!("{}", reg);
         match mode {
             0_u16 => {
@@ -1889,7 +1889,7 @@ impl Cpu {
 
         match opcode {
             0b000000_u16 => {self.increment_pc(1); }, // NO OP
-            0b000001_u16 => {self.op_move(mode, reg, mem)?; }, // MOVE
+            0b000001_u16 => {self.op_mov(mode, reg, mem)?; }, // MOVE
             0b000010_u16 => {self.op_add(mode, reg, mem)?; }, // ADD
             0b000011_u16 => {self.op_sub(mode, reg, mem)?; }, // SUB
             0b000100_u16 => {self.op_mul(mode, reg, mem)?; }, // MUL

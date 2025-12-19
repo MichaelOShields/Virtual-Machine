@@ -66,6 +66,9 @@ update_input_buffer: ; last input stored at 0x12C4
 
 save_ksp:
     gsp i 0x1250
+
+    mov rm r5, 0x1250
+    hlt
     ret
 
 save_usp:
@@ -88,6 +91,7 @@ clear_regs:
 
 load_kregs:
 
+    
     mov rm r0, 0x1252
     mov rm r1, 0x1253
     mov rm r2, 0x1254
