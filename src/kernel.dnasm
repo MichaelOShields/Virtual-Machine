@@ -16,10 +16,8 @@ kernel:
     call i save_ksp
 
     ; set usp
-    mov rm r0, 0x12CE
-    mov rm r1, 0x12CF
 
-    ssp r r0
+    ssp m 0x1300
 
     ; load user regs
     call i load_uregs
@@ -68,7 +66,7 @@ save_ksp:
     gsp i 0x1250
 
     mov rm r5, 0x1250
-    hlt
+
     ret
 
 save_usp:
@@ -126,6 +124,14 @@ load_syscall_regs: ; just bring back syscall-specific regs
 
     ret
 
+load_uregs_syscall:
+
+    mov rm r4, 0x1306
+    mov rm r5, 0x1307
+    mov rm r6, 0x1308
+    mov rm r7, 0x1309
+
+    ret
 
 load_uregs:
 
@@ -157,20 +163,33 @@ save_uregs:
 
 
 
+
 ; KERNEL TRAP:
 
 .org 0x1000 ; kernel trap
 
 
+
+
 ktrap_catch:
 
-    ; pnk
 
     call i save_uregs
 
+
+    ; upc is in stack
+    call i clear_regs
+
+    pop r r0
+    pop r r1
+
+    ; store upc
+    mov mr 0x130A, r0
+    mov mr 0x130B, r1
+
     call i save_usp
 
-    ssp m 0x1250
+    ssp m 0x1250 ; LOAD KSP
 
     mov rm r0, 0x1310 ; get reason
 
@@ -179,10 +198,10 @@ ktrap_catch:
     ; diagnose cpuexit
 
     cmp ri r0, 0b0000 ; none, probably do nothing
-    pnk
+    jz i resume_prog
 
     cmp ri r0, 0b0001 ; timer, return control to kernel
-    jz i kernel
+    jz i resume_prog
 
 
     cmp ri r0, 0b0010 ; halt, since it's a cpu exit we kill the application
@@ -201,12 +220,43 @@ ktrap_catch:
     jmp i kernel
 
 
+resume_prog_sys:
+    ; set usp
+    ssp m 0x1300
+
+    ; load user regs
+    call i load_uregs_syscall
+
+    push i 0x38 ; big endian
+    push i 0x00
+
+    kret
+
+
+resume_prog:
+    ; set usp
+    ssp m 0x1300
+
+    ; load user regs
+    call i load_uregs
+
+    push i 0x38 ; big endian
+    push i 0x00
+
+    kret
+
 
 
 
 handle_syscall:
     call i load_syscall_regs
-    ret
+    cmp ri r0, 0
+    jz i resume_prog
+    cmp ri r0, 1 ; getting key
+    mov rm r0, 0x87FF
+    cmp ri r0, 2 ; draw a pixel in [r1:r2] as r3
+    mov mr r2, r3
+    jz i resume_prog_sys
 
 
 

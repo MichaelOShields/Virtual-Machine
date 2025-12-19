@@ -197,7 +197,6 @@ impl Cpu {
 
                 *r1 = mval;
 
-
                 self.increment_pc(3); // uses operand -> 3 bytes
             },
             _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
@@ -1424,6 +1423,10 @@ impl Cpu {
 
     fn op_sys(&mut self, mem: &mut Bus) -> Result<(), CPUExit> {
 
+        // 0b0000_0000: resume quick
+        // 0b0000_0001: get key
+        self.increment_pc(2);
+
         return Err(CPUExit::Syscall);
     }
 
@@ -1736,6 +1739,13 @@ impl Cpu {
         self.debug(mem);
         panic!("Panicked @ request.");
     }
+
+    fn op_dbg(&mut self, mem: &mut Bus) {
+        println!("DEBUG:");
+        self.status();
+        self.debug(mem);
+        self.increment_pc(2);
+    }
     
 
 
@@ -1921,6 +1931,7 @@ impl Cpu {
             0b011110_u16 => {self.op_kret(mem)?; },
             0b011111_u16 => {self.op_gsp(mode, reg, mem)?; }, // GET STACK PTR
             0b100_000_u16 => {self.op_pnk(mem); }, // PANIC
+            0b100_001_u16 => {self.op_dbg(mem); }, // debug
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

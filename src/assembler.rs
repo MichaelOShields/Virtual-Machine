@@ -512,6 +512,7 @@ impl Parser {
         ops.insert("hlt".to_string(), (OpKind::Zero, OperandLength::Zero));
 
         ops.insert("kret".to_string(), (OpKind::Zero, OperandLength::Zero));
+        ops.insert("dbg".to_string(), (OpKind::Zero, OperandLength::Zero));
         ops.insert("sys".to_string(), (OpKind::Zero, OperandLength::Zero));
 
         ops.insert("pnk".to_string(), (OpKind::Zero, OperandLength::Zero));
@@ -983,6 +984,7 @@ impl Assembler {
             "kret" => 0b011_110,
             "gsp" => 0b011_111,
             "pnk" => 0b100_000,
+            "dbg" => 0b100_001,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });
@@ -1024,7 +1026,7 @@ impl Assembler {
 
         };
         let m1: u8 = get_bits_msb(mem_addr, 0, 7) as u8;
-        let m2: u8 = get_bits_lsb(mem_addr, 0, 7) as u8;
+        let m2: u8 = get_bits_msb(mem_addr, 7, 15) as u8;
         return Ok((m1, m2));
     }
 
@@ -1090,6 +1092,12 @@ impl Assembler {
         let mut instrs: Vec<u8> = vec![]; 
         let mut cleanup: Vec<u8> = vec![]; // for memory ops that require cleanup
         if let Stmt::DoubleOperation { opid, mode, dest, src, operand_length } = op {
+
+            let mut operand_length = operand_length;
+            if mode == DoubleMode::Rmi {
+                operand_length = OperandLength::Unsigned16;
+            }
+
             let mut instr1: u8 = 0;
             instr1 |= self.opcode_from_opid(opid)? << 2;
             let modebinary = self.dbmode_convert(mode.clone())?;
@@ -1166,6 +1174,7 @@ impl Assembler {
                 }
             }
             else if mode == DoubleMode::Rmi {
+                reg1 = self.register_from_operand(dest)?;
                 match operand_length {
                     OperandLength::Unsigned16 => {
                         let Operand::Immediate(Expr::Num(numexpr))  = src else 

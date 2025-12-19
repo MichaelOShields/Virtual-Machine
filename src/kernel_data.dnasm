@@ -309,6 +309,10 @@
 .byte 0
 
 
+
 ; kernel mmio starts at 0x87FF
 
 .org 0x87FF
+; 0x87FF is the location of the key buffer
+
+

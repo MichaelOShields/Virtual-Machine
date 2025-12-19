@@ -288,7 +288,7 @@ fn main() {
     
     let keyb = Keyboard::new();
     let ms = Mouse::new();
-
+    
     // kernel / system
     let bootloader   = 0x0000..0x0400; // 1 KB
     let kernel_core  = 0x0400..0x1000;
@@ -303,7 +303,7 @@ fn main() {
     let mmio         = 0x3400..0x3800; // 1 KB
 
     // user space
-    let user_code  = 0x3800..0x7000;
+    let user_code  = 0x3800..0x7000; // core loop should start at 0x4500 (for austerity)    
     let user_data  = 0x7000..0x8800;
     let user_heap  = 0x8800..0xC800;
     let user_stack = 0xC800..0xFFFF; // goes 0xFFFE

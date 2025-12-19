@@ -1,9 +1,74 @@
 .org 0x3800
 
 
-mov ri r5, 255
+mov ri r1, hi(0x2400)
+mov ri r2, lo(0x2400)
+mov ri r3, 255
 
-pnk
+
+jmp i loop
+
+
+.org 0x4500 ; core loop
+loop:
+
+    call i check_key
+
+    jmp i loop
+
+
+
+; functions:
+
+check_key:
+    mov ri r0, 1
+    sys
+
+    cmp ri r0, 27
+    jz i go_up
+    cmp ri r0, 28
+    jz i go_down
+    cmp ri r0, 29
+    jz i go_left
+    cmp ri r0, 30
+    jz i go_right
+    ret
+
+
+inc_r1:
+    add ri r1, 1
+    ret
+
+dec_r1:
+    sub ri r1, 1
+    ret
+
+
+go_right:
+    add ri r2, 1
+    jc i inc_r1
+    ret
+
+go_left:
+    sub ri r2, 1
+    ret
+
+write_sys:
+    mov ri r0, 2
+    sys
+    ret
+
+go_up:
+    sub ri r1, 16
+    jc i dec_r1
+    ret
+
+go_down:
+    add ri r2, 16
+    jc i inc_r1
+    ret
 
 
 hlt
+
+

@@ -3,8 +3,8 @@ use std::collections::{VecDeque};
 
 
 pub struct Mouse {
-    pub x: usize,
-    pub y: usize,
+    pub x: u8,
+    pub y: u8,
 }
 
 

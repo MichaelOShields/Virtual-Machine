@@ -57,8 +57,8 @@ impl MemRange {
             Self::Mmio(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             
             Self::UserCode(_) => 
-                (mode == CPUMode::K && matches!(access, Access::X)) || 
-                (mode == CPUMode::U && matches!(access, Access::X)),
+                (mode == CPUMode::K && matches!(access, Access::X | Access::R)) || 
+                (mode == CPUMode::U && matches!(access, Access::X | Access::R)),
             
             Self::UserData(_) => 
                 (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
