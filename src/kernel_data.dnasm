@@ -81,7 +81,7 @@
 .byte 0b10001_000
 .byte 0b10001_000
 
-.const "i", 9
+
 .byte 0b11111_000
 .byte 0b00100_000
 .byte 0b00100_000
@@ -254,16 +254,19 @@
 
 ; ends @ 0x12C3
 
-; basic kernel data at 0x12C4
-; basic kernel SP:
 
+; kernel info: @0x1250
 
-; KSP at 0x12C4-0x12C5
+.org 0x1250
+
+; kernel SP:
+
 .byte 0x23
 .byte 0xFF
 
 
-; kernel regs start at 0x12C6
+.org 0x1252
+; kernel regs:
 .byte 0
 .byte 0
 .byte 0
@@ -273,15 +276,15 @@
 .byte 0
 .byte 0
 
-; user data starts @ 0x12CE:
-; USP @ 0x12CE
 
-.org 0x12CE
+.org 0x1300 ; user info
+
+; user sp:
 .byte 0xFF
 .byte 0xFE
 
-.org 0x12D0
-; user regs start at 0x12D0:
+.org 0x1302
+; user regs start at 0x1302:
 .byte 0
 .byte 0
 .byte 0
@@ -291,7 +294,19 @@
 .byte 0
 .byte 0
 
+; upc at 0x130A:
+.org 0x130A
+.byte 0x38
+.byte 0x00
 
+
+
+; exit info @ 0x1310
+.org 0x1310
+.byte 0 ; reason, others are opt. regs
+.byte 0
+.byte 0
+.byte 0
 
 
 ; kernel mmio starts at 0x87FF

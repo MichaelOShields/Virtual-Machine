@@ -1,13 +1,14 @@
 .org 0x00
 
 
-mov ri r0, 0x23
-mov ri r1, 0xFF
-ssp r r0 ; kernel stack pointer
+; mov ri r0, 0x23
+; mov ri r1, 0xFF
+; ssp r r0 ; kernel stack pointer
+
+ssp m 0x1250
+
+; pnk
 
 
 
-mov ri r0, 0x04
-mov ri r1, 0x00
-
-jmp r r0
+jmp i 0x400

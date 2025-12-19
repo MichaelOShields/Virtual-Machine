@@ -49,7 +49,7 @@ impl MemRange {
         return match self {
             Self::Bootloader(_) => mode == CPUMode::K && matches!(access, Access::X | Access::R),
             Self::KernelCore(_) => mode == CPUMode::K && matches!(access, Access::R | Access::X),
-            Self::KernelTraps(_) => mode == CPUMode::K && matches!(access, Access::X),
+            Self::KernelTraps(_) => mode == CPUMode::K && matches!(access, Access::X | Access::R),
             Self::KernelData(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             Self::KernelHeap(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             Self::KernelStack(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),

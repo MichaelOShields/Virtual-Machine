@@ -1,6 +1,9 @@
 .org 0x3800
 
-pnk
 
 mov ri r5, 255
+
+pnk
+
+
 hlt

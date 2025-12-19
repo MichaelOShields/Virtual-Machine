@@ -1,6 +1,5 @@
 .org 0x400
 
-jmp i kernel
 
 
 
@@ -66,59 +65,87 @@ update_input_buffer: ; last input stored at 0x12C4
 
 
 save_ksp:
-    gsp i 0x12C4
+    gsp i 0x1250
+    ret
+
+save_usp:
+    gsp i 0x1300
+    ret
+
+clear_regs:
+
+    mov ri r0, 0
+    mov ri r1, 0
+    mov ri r2, 0
+    mov ri r3, 0
+    mov ri r4, 0
+    mov ri r5, 0
+    mov ri r6, 0
+    mov ri r7, 0
+
     ret
 
 
 load_kregs:
 
-    mov rm r0, 0x12C6
-    mov rm r1, 0x12C7
-    mov rm r2, 0x12C8
-    mov rm r3, 0x12C9
-    mov rm r4, 0x12CA
-    mov rm r5, 0x12CB
-    mov rm r6, 0x12CC
-    mov rm r7, 0x12CD
+    mov rm r0, 0x1252
+    mov rm r1, 0x1253
+    mov rm r2, 0x1254
+    mov rm r3, 0x1255
+    mov rm r4, 0x1256
+    mov rm r5, 0x1257
+    mov rm r6, 0x1258
+    mov rm r7, 0x1259
 
     ret
 
 save_kregs:
 
-    mov mr 0x12C6, r0
-    mov mr 0x12C7, r1
-    mov mr 0x12C8, r2
-    mov mr 0x12C9, r3
-    mov mr 0x12CA, r4
-    mov mr 0x12CB, r5
-    mov mr 0x12CC, r6
-    mov mr 0x12CD, r7
+    mov mr 0x1252, r0
+    mov mr 0x1253, r1
+    mov mr 0x1254, r2
+    mov mr 0x1255, r3
+    mov mr 0x1256, r4
+    mov mr 0x1257, r5
+    mov mr 0x1258, r6
+    mov mr 0x1259, r7
 
     ret
 
+
+load_syscall_regs: ; just bring back syscall-specific regs
+
+    mov mr 0x1252, r0
+    mov mr 0x1253, r1
+    mov mr 0x1254, r2
+    mov mr 0x1255, r3
+
+    ret
+
+
 load_uregs:
 
-    mov rm r0, 0x12D0
-    mov rm r1, 0x12D1
-    mov rm r2, 0x12D2
-    mov rm r3, 0x12D3
-    mov rm r4, 0x12D4
-    mov rm r5, 0x12D5
-    mov rm r6, 0x12D6
-    mov rm r7, 0x12D7
+    mov rm r0, 0x1302
+    mov rm r1, 0x1303
+    mov rm r2, 0x1304
+    mov rm r3, 0x1305
+    mov rm r4, 0x1306
+    mov rm r5, 0x1307
+    mov rm r6, 0x1308
+    mov rm r7, 0x1309
 
     ret
 
 save_uregs:
 
-    mov mr 0x12D0, r0
-    mov mr 0x12D1, r1
-    mov mr 0x12D2, r2
-    mov mr 0x12D3, r3
-    mov mr 0x12D4, r4
-    mov mr 0x12D5, r5
-    mov mr 0x12D6, r6
-    mov mr 0x12D7, r7
+    mov mr 0x1302, r0
+    mov mr 0x1303, r1
+    mov mr 0x1304, r2
+    mov mr 0x1305, r3
+    mov mr 0x1306, r4
+    mov mr 0x1307, r5
+    mov mr 0x1308, r6
+    mov mr 0x1309, r7
 
     ret
 
@@ -130,21 +157,54 @@ save_uregs:
 
 .org 0x1000 ; kernel trap
 
+
 ktrap_catch:
+
+    pnk
+
     call i save_uregs
 
-    pop r r0 ; pop exit reason?
+    call i save_usp
+
+    ssp m 0x1250
+
+    mov rm r0, 0x1310 ; get reason
+
+
 
     ; diagnose cpuexit
 
-    cmp ri r0, 0b0000 ; timer, return control to kernel
-    jz i kernel
-    cmp ri 0b0001 ; halt, since it's a cpu exit we kill the application
+    cmp ri r0, 0b0000 ; none, probably do nothing
+    pnk
 
-    cmp ri 0b0010
+    cmp ri r0, 0b0001 ; timer, return control to kernel
+    jz i kernel
+
+
+    cmp ri r0, 0b0010 ; halt, since it's a cpu exit we kill the application
+    jz i kill_prog
+
+    cmp ri r0, 0b0011 ; syscall
+    jz i handle_syscall
+
+    cmp ri r0, 0b0100 ; IllegalInstruction, should kill the program
+    jz i kill_prog
+
+    cmp ri r0, 0b0101 ; illegal mem access, just kill the program
+    jz i kill_prog
+
+
+    jmp i kernel
+
 
 
 
 
 handle_syscall:
+    call i load_syscall_regs
     ret
+
+
+
+kill_prog:
+    hlt

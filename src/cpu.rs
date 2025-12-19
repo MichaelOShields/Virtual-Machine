@@ -1,82 +1,4 @@
-/*
 
-6 bits opcode
-4 bits mode (diff for each instruction)
-
-6 bits register
-
-8 bit operand (only for immediate values)
-
-
-INSTRUCTIONS: dest, src
-move (r2 to r1, m2 to r1, r2 to m1)
-
-opcode: 000000
-
-modes:
-0000 = r2 to r1
-0001 = m2 to r1
-0010 = r2 to m1
-0011 = i2 to r1
-0100 = i2 to m1
-
-
-
-INTEGER ARITHMETIC -> dest, src / divisor, dividend
-
-MODES: 
-r2 / r1, M2 / r1, r2 / M1, I2 / r1, r2 / I1, M2 / I1
-
-0001 = r2 / r1
-0010 = m2 / r1
-0011 = r2 / m1
-0100 = r2 / i1
-0101 = m2 / i1
-
-
-add 000010
-sub 000011
-mul 000100
-div 000101
-
-
-example for division: 10 / 2 = 5
-storing in r0, taking 10 from R1 and 2 from mem add 0xFFF0-FFF8
-
-DIVISION:
-
-registers:
-R0: 0
-R1: A
-
-R2: FF
-R3: F0
-
-
-
-opcode: 000001 
-mode (r2 / m1): 0011
-register: (mem address) 010 (R1) 001
-
-00000100 11010001
-
-04 D1
-
-
-MOVING:
-opcode: 000000
-mode (r2 to r1): 0010
-
-        DEST  SRC
-register: 000 001 -> R1 to R0
-
-
-
-
-
-
-
-*/
 use crate::bus::Bus;
 
 use crate::binary::{get_bits_lsb, get_bits_msb};
@@ -107,17 +29,18 @@ pub enum CPUMode {
 
 #[derive(PartialEq, Debug)]
 pub enum Fault {
-    IllegalInstruction, // ID 0b0011
-    IllegalMemAccess, // ID 0b0100
-    UnknownAction, // ID 0b101
+    IllegalInstruction, //
+    IllegalMemAccess, // 
+    UnknownAction, //
 }
 
 #[derive(PartialEq, Debug)]
 pub enum CPUExit {
-    Timer, // when we need to return control to kernel; ID 0b0000
-    Halt, // Kill current program; ID 0b0001
-    Syscall, // R0-R3 give information re which syscall; ID 0b0010
-    Fault ( Fault ), // Something went wrong, probably w/ permissions; ID starts @ 0b0011
+    None,  // idk default error
+    Timer, // when we need to return control to kernel
+    Halt, // Kill current program; 
+    Syscall, // R0-R3 give information re which syscall;
+    Fault ( Fault ), // Something went wrong, probably w/ permissions; 
 }
 
 
@@ -253,6 +176,26 @@ impl Cpu {
 
 
                 *r1 = i2;
+
+
+                self.increment_pc(3); // uses operand -> 3 bytes
+            },
+            0b0100_u16 => {
+                // m(i)2 to r1
+                // dest src
+
+                let i21 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i22 = self.get_operand(mem)?;
+
+                let i = (i21 as u16) << 8 | (i22 as u16);
+
+                let mval = self.memget(i, mem)?;
+
+                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+
+                *r1 = mval;
 
 
                 self.increment_pc(3); // uses operand -> 3 bytes
@@ -1486,11 +1429,15 @@ impl Cpu {
 
     fn op_kret(&mut self, mem: &mut Bus) -> Result<(), CPUExit> { // KERNEL RETURN; return after syscall/exit
 
+        self.access = Access::R;
+
         let pc2 = self.pop(mem)?;
         let pc1 = self.pop(mem)?;
         self.pc = (pc1 as u16) << 8 | pc2 as u16;
 
         self.mode = CPUMode::U;
+
+        self.access = Access::X;
 
 
 
@@ -1659,12 +1606,13 @@ impl Cpu {
                 // m
 
                 // mem loc stored as r0:r1 or r1:r2 etc
-                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+                let i1 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem)?;
 
-                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
+                let i = (i1 as u16) << 8 | (i2 as u16);
 
-                let mval = (self.memget(m, mem)? as u16) << 8 | (self.memget(m + 1, mem)? as u16);
+                let mval = (self.memget(i, mem)? as u16) << 8 | (self.memget(i + 1, mem)? as u16);
 
                 self.sp = mval;
 
@@ -1673,7 +1621,7 @@ impl Cpu {
                 //     CPUMode::U => self.usp = mval,
                 // }
 
-                self.increment_pc(2);
+                self.increment_pc(3);
 
             },
             0b0010_u16 => {
@@ -1823,13 +1771,14 @@ impl Cpu {
             self.access = Access::X;
 
             let exit_id: u8 = match exit {
-                CPUExit::Timer => 0b0000,
-                CPUExit::Halt => 0b0001,
-                CPUExit::Syscall => 0b0010,
+                CPUExit::None => 0b0000,
+                CPUExit::Timer => 0b0001,
+                CPUExit::Halt => 0b0010,
+                CPUExit::Syscall => 0b0011,
                 CPUExit::Fault(f) => match f {
-                    Fault::IllegalInstruction => 0b0011,
-                    Fault::IllegalMemAccess => 0b0100,
-                    Fault::UnknownAction => 0b0101,
+                    Fault::IllegalInstruction => 0b0100,
+                    Fault::IllegalMemAccess => 0b0101,
+                    Fault::UnknownAction => 0b0110,
                 }
             };
 
@@ -1858,9 +1807,9 @@ impl Cpu {
 
 
             // push exit reason
-            match self.push(exit_id, mem) {
+            match self.memset(0x1300, exit_id, mem) {
                 Ok(()) => (),
-                Err(_e) => {println!("push failed"); return;}
+                Err(_e) => {println!("memset (exit id) failed"); return;}
             };
 
             self.pc = self.kernel_trap_address;

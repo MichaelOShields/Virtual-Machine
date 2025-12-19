@@ -14,7 +14,6 @@ move rr r0, r1; -> moves r1 to r0
 
 Returns Vec<Position, Instruction>
 
-
 */
 
 #[derive(Debug)]
@@ -366,6 +365,7 @@ pub enum DoubleMode {
     Ri,
     Mr,
     Rr,
+    Rmi,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -727,15 +727,22 @@ impl Parser {
         self.expect_ident()?; // opid
         let mode_ident = self.expect_ident()?;
         // println!("mode: {:?}", mode_ident);
-        let mode = match self.double_modes.get(&mode_ident) {
+        let mut mode = match self.double_modes.get(&mode_ident) {
             Some(m) => m,
             None => return Err(ParserError { message: format!("Unable to get mode {:?}", mode_ident) }),
         }.clone();
+
         let dest = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected dest operand".into() })?;
+
         self.basic_token(Token::COMMA)?;
         let src = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected src operand".into() })?;
+
+        if let Operand::Register(_) = src && mode == DoubleMode::Rm {
+            mode = DoubleMode::Rmi;
+        }
+
         return Ok(Stmt::DoubleOperation { opid, mode, dest, src, operand_length })
     }
 
@@ -984,6 +991,7 @@ impl Assembler {
             DoubleMode::Rm => 0b0001,
             DoubleMode::Mr => 0b0010,
             DoubleMode::Ri => 0b0011,
+            DoubleMode::Rmi => 0b0100,
             _ => return Err(AssemblerError { message: "Unable to parse mode".to_string() }),
         });
     }
@@ -1198,11 +1206,52 @@ impl Assembler {
                 reg1 = self.register_from_operand(operand)?;
             }
             else if mode == SingleMode::M {
-                let (register1, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(operand)?;
-                reg1 = register1;
+                // let (register1, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(operand)?;
+                // reg1 = register1;
+
                 
-                instrs.append(&mut setup_instrs);
-                cleanup.append(&mut cleanup_instrs);
+                
+                // instrs.append(&mut setup_instrs);
+                // cleanup.append(&mut cleanup_instrs);
+
+                match operand {
+                    Operand::Immediate(o) => match operand_length {
+                        OperandLength::Unsigned16 => {
+                            let Expr::Num(numexpr)  = o else 
+                            {
+                                return Err(AssemblerError {message: "Expected 16-bit immediate operand.".to_string()})
+                            };
+                            let (m1, m2) = self.get_addr_from_numexpr(numexpr)?;
+                            imm.push(m1);
+                            imm.push(m2);
+                            
+                        },
+                        OperandLength::Unsigned8 => {
+                            if let Expr::Num(NumExpr::Raw(i))  = o {
+                                let immediate_val: u8 = i as u8;
+
+                                imm.push(immediate_val);
+                            } 
+                            else if let Expr::Num(NumExpr::Function(f)) = o {
+                                let immediate_val: u8 = self.eval_func(*f)? as u8;
+                                imm.push(immediate_val);
+                            }
+                            else {
+                                return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                            };
+                            
+                        },
+                        OperandLength::Any => (),
+                        OperandLength::Zero => return Err(AssemblerError { message: "Received OperandLength of zero during immediate value request".to_string() }),
+                        
+                    },
+                    Operand::Register(r) => {
+                        reg1 = r;
+                    }
+                }
+
+            
+                    
             }
             else if mode == SingleMode::I {
                 match operand_length {
