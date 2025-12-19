@@ -14,6 +14,8 @@ loop:
 
     call i check_key
 
+    call i write_sys
+
     jmp i loop
 
 
@@ -24,6 +26,7 @@ check_key:
     mov ri r0, 1
     sys
 
+
     cmp ri r0, 27
     jz i go_up
     cmp ri r0, 28
@@ -32,6 +35,8 @@ check_key:
     jz i go_left
     cmp ri r0, 30
     jz i go_right
+
+
     ret
 
 

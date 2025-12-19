@@ -5,8 +5,9 @@
 
 kernel:
 
-    call i load_kregs
+    dbg i 67
 
+    call i load_kregs
     ; poll events
     call i check_input
 
@@ -88,7 +89,6 @@ clear_regs:
 
 
 load_kregs:
-
     
     mov rm r0, 0x1252
     mov rm r1, 0x1253
@@ -124,7 +124,7 @@ load_syscall_regs: ; just bring back syscall-specific regs
 
     ret
 
-load_uregs_syscall:
+load_uregs_after_syscall:
 
     mov rm r4, 0x1306
     mov rm r5, 0x1307
@@ -174,11 +174,14 @@ save_uregs:
 ktrap_catch:
 
 
+
     call i save_uregs
+
+    dbg i 69
+    pnk
 
 
     ; upc is in stack
-    call i clear_regs
 
     pop r r0
     pop r r1
@@ -211,13 +214,19 @@ ktrap_catch:
     jz i handle_syscall
 
     cmp ri r0, 0b0100 ; IllegalInstruction, should kill the program
+    
     jz i kill_prog
 
     cmp ri r0, 0b0101 ; illegal mem access, just kill the program
+    
     jz i kill_prog
 
 
+
+
     jmp i kernel
+
+
 
 
 resume_prog_sys:
@@ -225,10 +234,11 @@ resume_prog_sys:
     ssp m 0x1300
 
     ; load user regs
-    call i load_uregs_syscall
+    call i load_uregs_after_syscall
 
-    push i 0x38 ; big endian
-    push i 0x00
+
+    push m 0x130B
+    push m 0x130A
 
     kret
 
@@ -240,12 +250,10 @@ resume_prog:
     ; load user regs
     call i load_uregs
 
-    push i 0x38 ; big endian
-    push i 0x00
+    push m 0x130B
+    push m 0x130A
 
     kret
-
-
 
 
 handle_syscall:
@@ -255,10 +263,11 @@ handle_syscall:
     cmp ri r0, 1 ; getting key
     mov rm r0, 0x87FF
     cmp ri r0, 2 ; draw a pixel in [r1:r2] as r3
-    mov mr r2, r3
-    jz i resume_prog_sys
+    mov mr r1, r3
+    jmp i resume_prog_sys
 
 
 
 kill_prog:
-    hlt
+    dbg i 0
+    pnk

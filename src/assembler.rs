@@ -365,7 +365,8 @@ pub enum DoubleMode {
     Ri,
     Mr,
     Rr,
-    Rmi,
+    Rmi, // taking a mem addr, getting its val from mem, putting it into reg
+    Mir, // taking a register, putting its val into mem via an immediate val
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -512,7 +513,9 @@ impl Parser {
         ops.insert("hlt".to_string(), (OpKind::Zero, OperandLength::Zero));
 
         ops.insert("kret".to_string(), (OpKind::Zero, OperandLength::Zero));
-        ops.insert("dbg".to_string(), (OpKind::Zero, OperandLength::Zero));
+
+        ops.insert("dbg".to_string(), (OpKind::Single, OperandLength::Unsigned8));
+
         ops.insert("sys".to_string(), (OpKind::Zero, OperandLength::Zero));
 
         ops.insert("pnk".to_string(), (OpKind::Zero, OperandLength::Zero));
@@ -745,6 +748,12 @@ impl Parser {
         }
         else if mode == DoubleMode::Rm {
             mode = DoubleMode::Rmi;
+        }
+        if let Operand::Register(_) = dest {
+            ()
+        }
+        else if mode == DoubleMode::Mr {
+            mode = DoubleMode::Mir;
         }
 
         return Ok(Stmt::DoubleOperation { opid, mode, dest, src, operand_length })
@@ -997,6 +1006,7 @@ impl Assembler {
             DoubleMode::Mr => 0b0010,
             DoubleMode::Ri => 0b0011,
             DoubleMode::Rmi => 0b0100,
+            DoubleMode::Mir => 0b0101,
             _ => return Err(AssemblerError { message: "Unable to parse mode".to_string() }),
         });
     }
@@ -1010,10 +1020,10 @@ impl Assembler {
         });
     }
 
-    fn register_from_operand(&mut self, dest: Operand) -> Result<u8, AssemblerError> {
-        return Ok(match dest {
+    fn register_from_operand(&mut self, op: Operand) -> Result<u8, AssemblerError> {
+        return Ok(match op {
             Operand::Register(num) => num,
-            _ => return Err(AssemblerError { message: "Expected register".to_string() })
+            _ => return Err(AssemblerError { message: format!("Expected register, got {:?}", op) })
         });
     }
 
@@ -1030,44 +1040,44 @@ impl Assembler {
         return Ok((m1, m2));
     }
 
-    fn mem_to_reg_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>, Vec<u8>), AssemblerError> { // result is register to grab mem addr, first vec<u8> is just loading the mem addr into R6 and R7, second vec<u8> is restoring R6 and R7
-        let reg: u8 = 6;
-        let mut setup: Vec<u8> = vec![];
-        let mut cleanup: Vec<u8> = vec![];
-        match mem {
-            Operand::Immediate(e) => match e {
-                Expr::Num(numex) => {
-                    let savereg6: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
-                    let savereg7: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
-                    let mut loadingreg6 = self.assemble_single_op(savereg6)?;
-                    let mut loadingreg7 = self.assemble_single_op(savereg7)?;
-                    setup.append(&mut loadingreg6);
-                    setup.append(&mut loadingreg7);
-                    let (m1, m2) = self.get_addr_from_numexpr(numex)?;
-                    let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))), operand_length: OperandLength::Unsigned8 };
-                    let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))), operand_length: OperandLength::Unsigned8 };
-                    let mut loadingm1 = self.assemble_double_op(movem1toreg6stmt)?;
-                    let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
-                    setup.append(&mut loadingm1);
-                    setup.append(&mut loadingm2);
+    // fn mem_to_reg_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>, Vec<u8>), AssemblerError> { // result is register to grab mem addr, first vec<u8> is just loading the mem addr into R6 and R7, second vec<u8> is restoring R6 and R7
+    //     let reg: u8 = 6;
+    //     let mut setup: Vec<u8> = vec![];
+    //     let mut cleanup: Vec<u8> = vec![];
+    //     match mem {
+    //         Operand::Immediate(e) => match e {
+    //             Expr::Num(numex) => {
+    //                 let savereg6: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
+    //                 let savereg7: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
+    //                 let mut loadingreg6 = self.assemble_single_op(savereg6)?;
+    //                 let mut loadingreg7 = self.assemble_single_op(savereg7)?;
+    //                 setup.append(&mut loadingreg6);
+    //                 setup.append(&mut loadingreg7);
+    //                 let (m1, m2) = self.get_addr_from_numexpr(numex)?;
+    //                 let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))), operand_length: OperandLength::Unsigned8 };
+    //                 let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))), operand_length: OperandLength::Unsigned8 };
+    //                 let mut loadingm1 = self.assemble_double_op(movem1toreg6stmt)?;
+    //                 let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
+    //                 setup.append(&mut loadingm1);
+    //                 setup.append(&mut loadingm2);
 
-                    let loadreg6: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
-                    let loadreg7: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
-                    let mut loadingpopreg6 = self.assemble_single_op(loadreg6)?;
-                    let mut loadingpopreg7 = self.assemble_single_op(loadreg7)?;
-                    cleanup.append(&mut loadingpopreg7);
-                    cleanup.append(&mut loadingpopreg6);
+    //                 let loadreg6: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
+    //                 let loadreg7: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
+    //                 let mut loadingpopreg6 = self.assemble_single_op(loadreg6)?;
+    //                 let mut loadingpopreg7 = self.assemble_single_op(loadreg7)?;
+    //                 cleanup.append(&mut loadingpopreg7);
+    //                 cleanup.append(&mut loadingpopreg6);
 
 
 
-                    return Ok((reg, setup, cleanup));
-                },
-                _ => return Err(AssemblerError { message: "Received unexpected immediate operand expression type.".to_string() })
-            },
-            Operand::Register(n) => {return Ok((n, vec![], vec![]))},
-        };
+    //                 return Ok((reg, setup, cleanup));
+    //             },
+    //             _ => return Err(AssemblerError { message: "Received unexpected immediate operand expression type.".to_string() })
+    //         },
+    //         Operand::Register(n) => {return Ok((n, vec![], vec![]))},
+    //     };
 
-    }
+    // }
 
     fn set_pc(&mut self, new_pc: u16) {
         self.pc = new_pc;
@@ -1094,7 +1104,7 @@ impl Assembler {
         if let Stmt::DoubleOperation { opid, mode, dest, src, operand_length } = op {
 
             let mut operand_length = operand_length;
-            if mode == DoubleMode::Rmi {
+            if mode == DoubleMode::Rmi || mode == DoubleMode::Mir {
                 operand_length = OperandLength::Unsigned16;
             }
 
@@ -1118,17 +1128,22 @@ impl Assembler {
             }
             else if mode == DoubleMode::Rm {
                 reg1 = self.register_from_operand(dest)?;
-                let (register2, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(src)?;
-                reg2 = register2;
-                instrs.append(&mut setup_instrs);
-                cleanup.append(&mut cleanup_instrs);
+                reg2 = self.register_from_operand(src)?;
+                
+                // let (register2, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(src)?;
+                // reg2 = register2;
+                // instrs.append(&mut setup_instrs);
+                // cleanup.append(&mut cleanup_instrs);
             } // FINISH
             else if mode == DoubleMode::Mr {
-                let (register1, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(dest)?;
-                reg1 = register1;
+                reg1 = self.register_from_operand(dest)?;
                 reg2 = self.register_from_operand(src)?;
-                instrs.append(&mut setup_instrs);
-                cleanup.append(&mut cleanup_instrs);
+                //
+                // let (register1, mut setup_instrs, mut cleanup_instrs) = self.mem_to_reg_from_operand(dest)?;
+                // reg1 = register1;
+                // reg2 = self.register_from_operand(src)?;
+                // instrs.append(&mut setup_instrs);
+                // cleanup.append(&mut cleanup_instrs);
             }
             else if mode == DoubleMode::Ri {
                 reg1 = self.register_from_operand(dest)?;
@@ -1197,6 +1212,49 @@ impl Assembler {
                             imm.push(immediate_val);
                         }
                         else if let Operand::Immediate(Expr::Num(NumExpr::Reference(r))) = src {
+                            if self.labels.contains_key(&r) {
+                                return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                            }
+                            else {
+                                // in consts which takes u8s
+                                let immediate_val: u8 = self.get_const(&r)?;
+                                imm.push(immediate_val);
+                            }
+                        }
+                        else {
+                            return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                        };
+                        
+                    },
+                    OperandLength::Any => (),
+                    OperandLength::Zero => return Err(AssemblerError { message: "Received OperandLength of zero during immediate value request".to_string() }),
+                    
+                }
+            }
+            else if mode == DoubleMode::Mir {
+                reg2 = self.register_from_operand(src)?;
+                match operand_length {
+                    OperandLength::Unsigned16 => {
+                        let Operand::Immediate(Expr::Num(numexpr))  = dest else 
+                        {
+                            return Err(AssemblerError {message: "Expected 16-bit immediate operand.".to_string()})
+                        };
+                        let (m1, m2) = self.get_addr_from_numexpr(numexpr)?;
+                        imm.push(m1);
+                        imm.push(m2);
+                        
+                    },
+                    OperandLength::Unsigned8 => {
+                        if let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = dest {
+                            let immediate_val: u8 = i as u8;
+
+                            imm.push(immediate_val);
+                        } 
+                        else if let Operand::Immediate(Expr::Num(NumExpr::Function(f))) = dest {
+                            let immediate_val: u8 = self.eval_func(*f)? as u8;
+                            imm.push(immediate_val);
+                        }
+                        else if let Operand::Immediate(Expr::Num(NumExpr::Reference(r))) = dest {
                             if self.labels.contains_key(&r) {
                                 return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
                             }

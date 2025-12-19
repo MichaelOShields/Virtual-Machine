@@ -314,5 +314,5 @@
 
 .org 0x87FF
 ; 0x87FF is the location of the key buffer
-
+.byte 0
 

@@ -178,7 +178,8 @@ impl Bus {
                 match &result {
                     Ok(()) => (),
                     Err(e) => {
-                        println!("Got CPUExit {:?} at range {:?}", e, range);
+                        println!("Got CPUExit {:?} at range {:?} (0x{:0x}..0x{:0x})", e, range, actual_range.start, actual_range.end);
+                        println!("Precise PC: {:0x}", address);
                         ()
                     }
                 }
