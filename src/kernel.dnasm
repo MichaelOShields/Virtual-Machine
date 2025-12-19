@@ -160,7 +160,7 @@ save_uregs:
 
 ktrap_catch:
 
-    pnk
+    ; pnk
 
     call i save_uregs
 

@@ -739,7 +739,10 @@ impl Parser {
         let src = self.expect_operand()
             .map_err(|_| ParserError { message: "Expected src operand".into() })?;
 
-        if let Operand::Register(_) = src && mode == DoubleMode::Rm {
+        if let Operand::Register(_) = src {
+            ()
+        }
+        else if mode == DoubleMode::Rm {
             mode = DoubleMode::Rmi;
         }
 
@@ -1121,6 +1124,48 @@ impl Assembler {
             }
             else if mode == DoubleMode::Ri {
                 reg1 = self.register_from_operand(dest)?;
+                match operand_length {
+                    OperandLength::Unsigned16 => {
+                        let Operand::Immediate(Expr::Num(numexpr))  = src else 
+                        {
+                            return Err(AssemblerError {message: "Expected 16-bit immediate operand.".to_string()})
+                        };
+                        let (m1, m2) = self.get_addr_from_numexpr(numexpr)?;
+                        imm.push(m1);
+                        imm.push(m2);
+                        
+                    },
+                    OperandLength::Unsigned8 => {
+                        if let Operand::Immediate(Expr::Num(NumExpr::Raw(i)))  = src {
+                            let immediate_val: u8 = i as u8;
+
+                            imm.push(immediate_val);
+                        } 
+                        else if let Operand::Immediate(Expr::Num(NumExpr::Function(f))) = src {
+                            let immediate_val: u8 = self.eval_func(*f)? as u8;
+                            imm.push(immediate_val);
+                        }
+                        else if let Operand::Immediate(Expr::Num(NumExpr::Reference(r))) = src {
+                            if self.labels.contains_key(&r) {
+                                return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                            }
+                            else {
+                                // in consts which takes u8s
+                                let immediate_val: u8 = self.get_const(&r)?;
+                                imm.push(immediate_val);
+                            }
+                        }
+                        else {
+                            return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
+                        };
+                        
+                    },
+                    OperandLength::Any => (),
+                    OperandLength::Zero => return Err(AssemblerError { message: "Received OperandLength of zero during immediate value request".to_string() }),
+                    
+                }
+            }
+            else if mode == DoubleMode::Rmi {
                 match operand_length {
                     OperandLength::Unsigned16 => {
                         let Operand::Immediate(Expr::Num(numexpr))  = src else 
