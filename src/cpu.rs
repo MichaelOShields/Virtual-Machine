@@ -87,7 +87,7 @@ impl Cpu {
 
     fn force_get_operand(&mut self, mem: &mut Bus) -> u8 {
         let result = mem.force_get(self.pc + 0x02);
-        self.access = Access::X;
+        // self.access = Access::X;
         result
     }
 
@@ -102,9 +102,12 @@ impl Cpu {
         // self.debug(mem);
 
 
-        self.sp -= 1;
+        
 
         self.memset(self.sp, val, mem)?;
+
+        self.sp -= 1;
+
         // match self.mode {
         //     CPUMode::K => self.ksp = self.sp,
         //     CPUMode::U => self.usp = self.sp,
@@ -114,9 +117,10 @@ impl Cpu {
 
     fn pop(&mut self, mem: &mut Bus) -> Result<u8, CPUExit> {
 
-        let v = self.memget(self.sp, mem)?;
-
         self.sp += 1;
+
+        let v = self.memget(self.sp, mem)?;
+        self.memset(self.sp, 0, mem)?;
 
         // match self.mode {
         //     CPUMode::K => self.ksp = self.sp,
@@ -1164,7 +1168,7 @@ impl Cpu {
                 Ok(r)
             },
             0b0001_u16 => {
-                // m
+                // m(r)
 
                 // mem loc stored as r0:r1 or r1:r2 etc
                 let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
@@ -1180,13 +1184,97 @@ impl Cpu {
             0b0010_u16 => {
                 // i
                 let i = self.get_operand(mem)?;
+                self.increment_pc(1);
 
-                self.increment_pc(3);
+                self.increment_pc(2);
 
                 Ok(i)
 
             },
+            0b0011_u16 => {
+                // m(i)
+                let i1 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem)?;
+
+                let m: u16 = (i1 as u16) << 8 | (i2 as u16); // memory address
+
+                let mval = self.memget(m, mem)?;
+
+                self.increment_pc(3);
+
+                Ok(mval)
+            },
             _ => Err(CPUExit::Fault(Fault::UnknownAction))
+        }
+    }
+
+
+    fn single_val_addr(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<u16, CPUExit> {
+        return match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let r12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (r11 as u16) << 8 | (r12 as u16);
+
+                self.increment_pc(2);
+
+                Ok(m)
+            },
+            0b0001_u16 => {
+                // m
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let r11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let r12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (r11 as u16) << 8 | (r12 as u16);
+
+                let mval = (self.memget(m, mem)? as u16) << 8 | (self.memget(m + 1, mem)? as u16);
+
+                self.increment_pc(2);
+
+                Ok(mval)
+
+            },
+            0b0010_u16 => {
+                // i
+                let i1 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem)?;
+
+                let i = (i1 as u16) << 8 | (i2 as u16);
+
+                // match self.mode {
+                //     CPUMode::K => self.ksp = i,
+                //     CPUMode::U => self.usp = i,
+                // }
+
+                self.increment_pc(3);
+
+                Ok(i)
+            },
+            0b0011_u16 => {
+                // m(i)
+                let i1 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem)?;
+
+                let m: u16 = (i1 as u16) << 8 | (i2 as u16); // memory address
+
+                let mval1 = self.memget(m, mem)?;
+                let mval2 = self.memget(m + 1, mem)?;
+
+                self.increment_pc(3);
+
+                let final_mem = (mval1 as u16) << 8 | (mval2 as u16);
+
+                Ok(final_mem)
+            },
+            _ => {println!("Not accounted-for mode: {:04b}", mode); println!("pc: {:0x}", self.pc); Err(CPUExit::Fault(Fault::UnknownAction))},
         }
     }
 
@@ -1392,7 +1480,8 @@ impl Cpu {
     }
 
     fn op_push(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
-        let val: u8 = self.single_val(mode, reg, mem)?;
+        let val: u8 = self.single_val(mode, reg, mem)?;    
+
         self.push(val, mem)?;
         Ok(())
     }
@@ -1455,11 +1544,17 @@ impl Cpu {
 
     fn op_kret(&mut self, mem: &mut Bus) -> Result<(), CPUExit> { // KERNEL RETURN; return after syscall/exit
 
-        self.access = Access::R;
+        // self.access = Access::X;
 
         let pc2 = self.pop(mem)?;
         let pc1 = self.pop(mem)?;
-        self.pc = (pc1 as u16) << 8 | pc2 as u16;
+        println!("pc2: {:0x}", pc2);
+        println!("pc1: {:0x}", pc1);
+        
+        // panic!();
+        let new_pc = (pc1 as u16) << 8 | (pc2 as u16);
+        println!("new pc: 0x{:x}", new_pc);
+        self.pc = new_pc;
 
         self.mode = CPUMode::U;
 
@@ -1612,62 +1707,9 @@ impl Cpu {
     }
 
     fn op_ssp(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
-        match mode {
-            0b0000_u16 => {
-                // r
-                
-                let r11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let r12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m: u16 = (r11 as u16) << 8 | (r12 as u16);
-
-                self.sp = m;
-                // match self.mode {
-                //     CPUMode::K => self.ksp = m,
-                //     CPUMode::U => self.usp = m,
-                // }
-                self.increment_pc(2);
-            },
-            0b0001_u16 => {
-                // m
-
-                // mem loc stored as r0:r1 or r1:r2 etc
-                let i1 = self.get_operand(mem)?;
-                self.increment_pc(1);
-                let i2 = self.get_operand(mem)?;
-
-                let i = (i1 as u16) << 8 | (i2 as u16);
-
-                let mval = (self.memget(i, mem)? as u16) << 8 | (self.memget(i + 1, mem)? as u16);
-
-                self.sp = mval;
-
-                // match self.mode {
-                //     CPUMode::K => self.ksp = mval,
-                //     CPUMode::U => self.usp = mval,
-                // }
-
-                self.increment_pc(3);
-
-            },
-            0b0010_u16 => {
-                // i
-                let i1 = self.get_operand(mem)?;
-                self.increment_pc(1);
-                let i2 = self.get_operand(mem)?;
-
-                let i = (i1 as u16) << 8 | (i2 as u16);
-
-                self.sp = i;
-                // match self.mode {
-                //     CPUMode::K => self.ksp = i,
-                //     CPUMode::U => self.usp = i,
-                // }
-
-                self.increment_pc(3);
-            },
-            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
-        }
+        self.sp = self.single_val_addr(mode, reg, mem)?;
+        // self.debug(mem);
+        // panic!();
 
         // self.debug(mem);
         Ok(())
@@ -1761,48 +1803,12 @@ impl Cpu {
         panic!("Panicked @ request.");
     }
 
-    fn op_dbg(&mut self, mode: u16, reg: u16, mem: &mut Bus) {
+    fn op_dbg(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         println!("DEBUG:");
         self.status();
         self.debug(mem);
-        match mode {
-            0b0000_u16 => {
-                // r
-                
-                let r1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                println!("R: {}", r1);
-
-
-                self.increment_pc(2);
-            },
-            0b0001_u16 => {
-                // m
-
-                // mem loc stored as r0:r1 or r1:r2 etc
-                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
-
-                println!("M: {}", mem.force_get(m));
-                self.increment_pc(2);
-
-            },
-            0b0010_u16 => {
-                // i
-                let i1 = self.force_get_operand(mem);
-                // self.increment_pc(1);
-                // let i2 = self.force_get_operand(mem);
-
-                // let m = (i1 as u16) << 8 | (i2 as u16);
-                
-                println!("I: {}", i1);
-
-                self.increment_pc(3);
-            },
-            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
-        }
-        self.increment_pc(2);
+        self.single_val(mode, reg, mem)?;
+        Ok(())
     }
     
 
@@ -1957,7 +1963,7 @@ impl Cpu {
             }
         }
 
-        println!("Instruction: 0b{:08b}\nPC: 0x{:0x}", (instruction & 0xFF00) >> 8 as u8, self.pc);
+        println!("Instruction: 0b{:08b}\nPC: 0x{:0x}\n SP: 0x{:0x}", (instruction & 0xFF00) >> 8 as u8, self.pc, self.sp);
 
 
         match opcode {

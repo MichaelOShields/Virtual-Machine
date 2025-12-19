@@ -5,26 +5,36 @@
 
 kernel:
 
-    dbg i 67
-
-    call i load_kregs
+    call i load_kregs ; works
     ; poll events
-    call i check_input
+    call i check_input ; works
 
+
+    ; main kernel code before returning to prog
 
     ; to run userprog, store kernel regs, store kernel stack ptr, set/pop user program stack ptr, run user program
+
+    mov ri r0,255
     call i save_kregs
     call i save_ksp
 
     ; set usp
 
-    ssp m 0x1300
+    ssp m 0x1300 ; should work, doesn't push/pop so i think stack is safe
+
+    ; works so far
 
     ; load user regs
     call i load_uregs
 
-    push i 0x38 ; big endian
-    push i 0x00
+
+    ; push user program ctr
+    push m 0x130A ; big endian
+    push m 0x130B
+
+    ;dbg i 0
+
+    ;pnk
 
     kret
 
@@ -66,8 +76,6 @@ update_input_buffer: ; last input stored at 0x12C4
 save_ksp:
     gsp i 0x1250
 
-    mov rm r5, 0x1250
-
     ret
 
 save_usp:
@@ -90,7 +98,7 @@ clear_regs:
 
 load_kregs:
     
-    mov rm r0, 0x1252
+    mov rm r0, 0x1252 ; works
     mov rm r1, 0x1253
     mov rm r2, 0x1254
     mov rm r3, 0x1255
@@ -103,7 +111,7 @@ load_kregs:
 
 save_kregs:
 
-    mov mr 0x1252, r0
+    mov mr 0x1252, r0 ; works
     mov mr 0x1253, r1
     mov mr 0x1254, r2
     mov mr 0x1255, r3
@@ -171,14 +179,10 @@ save_uregs:
 
 
 
+
 ktrap_catch:
 
-
-
     call i save_uregs
-
-    dbg i 69
-    pnk
 
 
     ; upc is in stack
@@ -195,8 +199,6 @@ ktrap_catch:
     ssp m 0x1250 ; LOAD KSP
 
     mov rm r0, 0x1310 ; get reason
-
-
 
     ; diagnose cpuexit
 
@@ -237,8 +239,8 @@ resume_prog_sys:
     call i load_uregs_after_syscall
 
 
-    push m 0x130B
     push m 0x130A
+    push m 0x130B
 
     kret
 
@@ -257,6 +259,7 @@ resume_prog:
 
 
 handle_syscall:
+
     call i load_syscall_regs
     cmp ri r0, 0
     jz i resume_prog
@@ -269,5 +272,5 @@ handle_syscall:
 
 
 kill_prog:
-    dbg i 0
     pnk
+

@@ -8,6 +8,8 @@ mov ri r3, 255
 
 jmp i loop
 
+; test
+
 
 .org 0x4500 ; core loop
 loop:
@@ -25,6 +27,8 @@ loop:
 check_key:
     mov ri r0, 1
     sys
+
+    pnk
 
 
     cmp ri r0, 27

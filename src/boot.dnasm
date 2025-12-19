@@ -5,7 +5,7 @@
 ; mov ri r1, 0xFF
 ; ssp r r0 ; kernel stack pointer
 
-ssp m 0x1250 ; LOAD KSP / WORKS
+ssp m 0x1250 ; LOAD KSP
 
 ; pnk
 

@@ -374,6 +374,7 @@ pub enum SingleMode {
     R,
     I,
     M,
+    Mi, // memory from immediate operand
 }
 
 
@@ -514,8 +515,6 @@ impl Parser {
 
         ops.insert("kret".to_string(), (OpKind::Zero, OperandLength::Zero));
 
-        ops.insert("dbg".to_string(), (OpKind::Single, OperandLength::Unsigned8));
-
         ops.insert("sys".to_string(), (OpKind::Zero, OperandLength::Zero));
 
         ops.insert("pnk".to_string(), (OpKind::Zero, OperandLength::Zero));
@@ -538,6 +537,8 @@ impl Parser {
         
         ops.insert("push".to_string(), (OpKind::Single, OperandLength::Unsigned8));
         ops.insert("pop".to_string(),  (OpKind::Single, OperandLength::Unsigned8));
+
+        ops.insert("dbg".to_string(), (OpKind::Single, OperandLength::Unsigned8));
 
         
         ops.insert("shl".to_string(), (OpKind::Single, OperandLength::Unsigned8));
@@ -763,7 +764,7 @@ impl Parser {
         self.expect_ident()?; // opid
         let mode_ident = self.expect_ident()?;
         // println!("mode: {:?}", mode_ident);
-        let mode = match self.single_modes.get(match (&mode_ident).as_str() {
+        let mut mode = match self.single_modes.get(match (&mode_ident).as_str() {
             "r" => &'r',
             "i" => &'i',
             "m" => &'m',
@@ -773,6 +774,14 @@ impl Parser {
             None => return Err(ParserError { message: "Unable to get mode".to_string() }),
         }.clone();
         let operand = self.expect_operand()?;
+
+        if let Operand::Register(_) = operand {
+            ()
+        }
+        else if mode == SingleMode::M {
+            mode = SingleMode::Mi;
+        }
+
         return Ok(Stmt::SingleOperation { opid, mode, operand, operand_length })
     }
 
@@ -857,7 +866,7 @@ impl Parser {
             Token::Ident(s) => s.clone(),
             _ => return Err(ParserError { message: format!("Expected signal identifier, got {:?}", self.current_token) })
         };
-        self.advance()?;
+        self.advance()?; // sig ident
         return Ok(self.parse_sig(sigid.to_string())?);
     }
 
@@ -1016,6 +1025,7 @@ impl Assembler {
             SingleMode::R => 0b0000,
             SingleMode::M => 0b0001,
             SingleMode::I => 0b0010,
+            SingleMode::Mi => 0b0011,
             _ => return Err(AssemblerError { message: "Unable to parse mode".to_string() }),
         });
     }
@@ -1295,9 +1305,17 @@ impl Assembler {
 
     fn assemble_single_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
         let mut instrs: Vec<u8> = vec![];
-        let mut cleanup: Vec<u8> = vec![]; // for memory ops that require cleanup
+        // let mut cleanup: Vec<u8> = vec![]; // for memory ops that require cleanup
         println!("Single op: {:?}", op);
-        if let Stmt::SingleOperation { opid, mode, operand, operand_length } = op {
+
+        if let Stmt::SingleOperation { opid, mode, operand, operand_length: operand_length1 } = op {
+
+
+            let mut operand_length = operand_length1;
+            if mode == SingleMode::Mi && operand_length == OperandLength::Unsigned8 {
+                operand_length = OperandLength::Unsigned16;
+            }
+
             let mut instr1: u8 = 0;
             instr1 |= self.opcode_from_opid(opid)? << 2;
             let modebinary = self.smode_convert(mode.clone())?;
@@ -1361,9 +1379,6 @@ impl Assembler {
                         reg1 = r;
                     }
                 }
-
-            
-                    
             }
             else if mode == SingleMode::I {
                 match operand_length {
@@ -1397,6 +1412,15 @@ impl Assembler {
                     
                 }
             }
+            else if mode == SingleMode::Mi {
+                let Operand::Immediate(Expr::Num(numexpr))  = operand else 
+                {
+                    return Err(AssemblerError {message: "Expected 16-bit immediate operand.".to_string()})
+                };
+                let (m1, m2) = self.get_addr_from_numexpr(numexpr)?;
+                imm.push(m1);
+                imm.push(m2);
+            }
 
             instr2 |= reg1 << 3;
             instr2 |= reg2;
@@ -1413,7 +1437,7 @@ impl Assembler {
             if !imm.is_empty() {
                 instrs.append(&mut imm);
             }
-            instrs.append(&mut cleanup); // add cleanup instructions at end
+            // instrs.append(&mut cleanup);
         }
         else {
             return Err(AssemblerError { message: "Unable to parse SingleOperation".to_string() });
