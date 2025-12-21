@@ -14,11 +14,17 @@ jmp i loop
 .org 0x4500 ; core loop
 loop:
 
+    mov ri r0, 0 ; reset so we don't think we're constantly getting a key?
+
     call i check_key
+
+    call i write_sys
+
+
 
     after_key:
 
-    call i write_sys
+    ; call i write_sys
 
     after_write:
 
@@ -28,9 +34,29 @@ loop:
 
 ; functions:
 
+
+
+no_key:
+    ret
+
+
 check_key:
     mov ri r0, 1 ; check key syscall id
     sys
+
+
+    cmp ri r0, 0
+    jz i no_key
+
+    ; now we probably have a key, so we should clear what we drew 
+
+    ; temp deleted but will bring back:
+
+    ; mov ri r3, 0
+    
+    ; call i write_sys
+    ; now we've cleared what we previously drew, can reset to "drawing mode"
+    ; mov ri r3, 255
 
 
     cmp ri r0, 27
@@ -42,8 +68,8 @@ check_key:
     cmp ri r0, 30
     jz i go_right
 
-
-    jmp i after_key
+    ret
+    ;jmp i after_key
 
 
 inc_r1:
@@ -62,19 +88,21 @@ go_right:
 
 go_left:
     sub ri r2, 1
+    jc i dec_r1
     ret
 
 write_sys:
     mov ri r0, 2
     sys
-    jmp i after_write
+    ret
 
 go_up:
-    sub ri r1, 16
+    sub ri r2, 16
     jc i dec_r1
     ret
 
 go_down:
+
     add ri r2, 16
     jc i inc_r1
     ret

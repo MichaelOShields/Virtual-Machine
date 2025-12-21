@@ -76,7 +76,7 @@ impl Cpu {
             mode: CPUMode::K,
             access: Access::X,
             instruction_ctr: 0,
-            instruction_lim: 50, // allow 50 instructions before returning control
+            instruction_lim: 300, // allow 50 instructions before returning control
             kernel_trap_address: trap_addr,
         }
     }
@@ -1548,6 +1548,7 @@ impl Cpu {
 
         // self.access = Access::X;
 
+
         let pc2 = self.pop(mem)?;
         let pc1 = self.pop(mem)?;
         println!("pc2: {:0x}", pc2);
@@ -1855,7 +1856,7 @@ impl Cpu {
                 CPUExit::Timer => 0b0001,
                 CPUExit::Halt => 0b0010,
                 CPUExit::Syscall => 0b0011,
-                CPUExit::Fault(f) => match f {
+                CPUExit::Fault(ref f) => match f {
                     Fault::IllegalInstruction => 0b0100,
                     Fault::IllegalMemAccess => 0b0101,
                     Fault::UnknownAction => 0b0110,
@@ -1893,8 +1894,8 @@ impl Cpu {
             };
 
             println!("0x1310: {:08b}", mem.force_get(0x1310));
-
-            println!("-----------------------------------------------------------------------------------------------------------------------");
+            println!("Error: {:?}", exit);
+            println!("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
             self.pc = self.kernel_trap_address;
         }
@@ -2015,6 +2016,8 @@ impl Cpu {
 
         println!("Instruction: 0b{:08b}\nPC: 0x{:0x}\n SP: 0x{:0x}", (instruction & 0xFF00) >> 8 as u8, self.pc, self.sp);
         println!("Instruction mnemonic: {}", self.convert_instruction(opcode));
+
+        mem.status();
 
 
         match opcode {
