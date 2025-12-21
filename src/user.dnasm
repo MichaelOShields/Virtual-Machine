@@ -14,7 +14,6 @@ jmp i loop
 .org 0x4500 ; core loop
 loop:
 
-    mov ri r0, 0 ; reset so we don't think we're constantly getting a key?
 
     call i check_key
 
@@ -35,8 +34,18 @@ loop:
 ; functions:
 
 
-
 no_key:
+    ret
+
+
+all_keys:
+    call i clear_disp
+    ret
+
+clear_disp:
+    mov ri r3, 0
+    call i write_sys
+    mov ri r3, 255
     ret
 
 
@@ -82,11 +91,13 @@ dec_r1:
 
 
 go_right:
+    call i all_keys
     add ri r2, 1
     jc i inc_r1
     ret
 
 go_left:
+    call i all_keys
     sub ri r2, 1
     jc i dec_r1
     ret
@@ -97,12 +108,14 @@ write_sys:
     ret
 
 go_up:
+    call i all_keys
     sub ri r2, 16
     jc i dec_r1
     ret
 
 go_down:
 
+    call i all_keys
     add ri r2, 16
     jc i inc_r1
     ret
