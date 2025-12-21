@@ -16,7 +16,11 @@ loop:
 
     call i check_key
 
+    after_key:
+
     call i write_sys
+
+    after_write:
 
     jmp i loop
 
@@ -25,10 +29,8 @@ loop:
 ; functions:
 
 check_key:
-    mov ri r0, 1
+    mov ri r0, 1 ; check key syscall id
     sys
-
-    pnk
 
 
     cmp ri r0, 27
@@ -41,7 +43,7 @@ check_key:
     jz i go_right
 
 
-    ret
+    jmp i after_key
 
 
 inc_r1:
@@ -65,7 +67,7 @@ go_left:
 write_sys:
     mov ri r0, 2
     sys
-    ret
+    jmp i after_write
 
 go_up:
     sub ri r1, 16
@@ -78,6 +80,5 @@ go_down:
     ret
 
 
-hlt
-
-
+dbg i 240
+pnk

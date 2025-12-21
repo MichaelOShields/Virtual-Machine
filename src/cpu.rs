@@ -1539,6 +1539,8 @@ impl Cpu {
         // 0b0000_0001: get key
         self.increment_pc(2);
 
+        println!("-----------------------------------------------------------------------------------------------------------------------");
+
         return Err(CPUExit::Syscall);
     }
 
@@ -1559,6 +1561,9 @@ impl Cpu {
         self.mode = CPUMode::U;
 
         self.access = Access::X;
+
+
+        println!("-----------------------------------------------------------------------------------------------------------------------");
 
 
 
@@ -1807,7 +1812,8 @@ impl Cpu {
         println!("DEBUG:");
         self.status();
         self.debug(mem);
-        self.single_val(mode, reg, mem)?;
+        let val = self.single_val(mode, reg, mem)?;
+        println!("Debug num: {}", val);
         Ok(())
     }
     
@@ -1888,6 +1894,8 @@ impl Cpu {
 
             println!("0x1310: {:08b}", mem.force_get(0x1310));
 
+            println!("-----------------------------------------------------------------------------------------------------------------------");
+
             self.pc = self.kernel_trap_address;
         }
         else {
@@ -1933,6 +1941,48 @@ impl Cpu {
         }
     }
 
+    fn convert_instruction(&mut self, op: u16) -> String {
+        match op {
+            0b000_000 => "nop",
+            0b000_001 => "mov",
+            0b000_010 => "add",
+            0b000_011 => "sub",
+            0b000_100 => "mul",
+            0b000_101 => "div",
+            0b000_110 => "mod",
+            0b000_111 => "and",
+            0b001_000 => "or",
+            0b001_001 => "xor",
+            0b001_010 => "not",
+            0b001_011 => "jmp",
+            0b001_100 => "jz",
+            0b001_101 => "jc",
+            0b001_110 => "jo",
+            0b001_111 => "js",
+            0b010_000 => "jnz",
+            0b010_001 => "jg",
+            0b010_010 => "jl",
+            0b010_011 => "cmp",
+            0b010_100 => "push",
+            0b010_101 => "pop",
+            0b010_110 => "call",
+            0b010_111 => "ret",
+            0b011_000 => "shl",
+            0b011_001 => "shr",
+            0b011_010 => "sar",
+            0b011_011 => "ssp",
+            0b011_100 => "skip",
+            0b011_101 => "sys",
+            0b011_110 => "kret",
+            0b011_111 => "gsp",
+            0b100_000 => "pnk",
+            0b100_001 => "dbg",
+            0b111_111 => "hlt",
+            _ => panic!("Received invalid instruction {:08b}", op),
+        }.to_string()
+
+    }
+
 
     fn act(&mut self, mem: &mut Bus) -> Result<(), CPUExit> { // 1 for did something, 0 for did nothing
 
@@ -1964,6 +2014,7 @@ impl Cpu {
         }
 
         println!("Instruction: 0b{:08b}\nPC: 0x{:0x}\n SP: 0x{:0x}", (instruction & 0xFF00) >> 8 as u8, self.pc, self.sp);
+        println!("Instruction mnemonic: {}", self.convert_instruction(opcode));
 
 
         match opcode {
@@ -2000,7 +2051,7 @@ impl Cpu {
             0b011110_u16 => {self.op_kret(mem)?; },
             0b011111_u16 => {self.op_gsp(mode, reg, mem)?; }, // GET STACK PTR
             0b100_000_u16 => {self.op_pnk(mem); }, // PANIC
-            0b100_001_u16 => {self.op_dbg(mode, reg, mem); }, // debug
+            0b100_001_u16 => {self.op_dbg(mode, reg, mem)?; }, // debug
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

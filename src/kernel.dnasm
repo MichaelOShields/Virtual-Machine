@@ -125,10 +125,10 @@ save_kregs:
 
 load_syscall_regs: ; just bring back syscall-specific regs
 
-    mov mr 0x1252, r0
-    mov mr 0x1253, r1
-    mov mr 0x1254, r2
-    mov mr 0x1255, r3
+    mov rm r0, 0x1252
+    mov rm r1, 0x1253
+    mov rm r2, 0x1254
+    mov rm r4, 0x1255
 
     ret
 
@@ -214,6 +214,7 @@ ktrap_catch:
 
     cmp ri r0, 0b0011 ; syscall
     jz i handle_syscall
+    ; also, afterwards the jz's shouldn't ret, they should return to the kernel/program
 
     cmp ri r0, 0b0100 ; IllegalInstruction, should kill the program
     
@@ -264,13 +265,28 @@ handle_syscall:
     cmp ri r0, 0
     jz i resume_prog
     cmp ri r0, 1 ; getting key
-    mov rm r0, 0x87FF
+    ; mov rm r0, 0x87FF ; no matter what we get the key?
+    jz i get_key
     cmp ri r0, 2 ; draw a pixel in [r1:r2] as r3
+    ; mov mr r1, r3
+    jz i draw_pixel
+    jmp i resume_prog_sys
+
+
+get_key:
+    mov rm r0, 0x87FF
+    dbg i 41
+    pnk
+    ; now we're done w/ the syscall so jump to 
+    jmp i resume_prog_sys
+
+draw_pixel: ; draw pixel in [r1:r2] as r3
     mov mr r1, r3
     jmp i resume_prog_sys
 
 
-
 kill_prog:
+    dbg i 69
+    hlt
     pnk
 
