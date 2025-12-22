@@ -23,7 +23,14 @@
 .byte 0
 .byte 0
 
-.org 0x130E          ; user 0 state / priority / wait. 0 means "not running"
+.org 0x130E          
+; user program 0 runnable state
+; 
+; 0 means "not runnable",
+; 1 means "runnable",
+; 2 means "waiting (reasoning probably tracked in padding bytes below later)",
+; 3 means "dead"/should be cleared when the kernel has some free time.
+; (a daemon or something? like a queued task; think about this more)
 .byte 0
 
 .org 0x130F          ; user 0 PC

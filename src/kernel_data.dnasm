@@ -283,7 +283,7 @@
 
 
 .org 0x1260 ; task admin resources
-.byte 0 ; current task index
+.byte 0 ; CURRENT TASK INDEX
 
 
 

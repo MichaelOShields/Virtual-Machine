@@ -13,15 +13,51 @@ kernel: ; round-robin scheduler
 
     ; to run userprog, store kernel regs, store kernel stack ptr, set/pop user program stack ptr, run user program
 
-    ; mov ri r0,255
     call i save_kregs
-    call i save_ksp
+
+
+
+    ; pick next program:
+    ; start w/ current task index:
+
+    mov rm r0, 0x1260                               ; current task index stored in mem
+    mov ri r4, hi(0x130E)                               ; user program #0 state/starting point to search
+    mov ri r5, lo(0x130E)
+
+    mov ri r3, 0x19                                 ; # bytes between programs; 0x19 * task_index gives us the task_index program state
+
+    mul ri r3, r0 ; 0x19 * task_index gives us the task_index program state
+
+    call i inc_r5_by_r3 ; jump forwards by # of bytes to get to current task index
+
+    scheduler_loop:                     ; loop until we find a program that wants to run
+
+        mov ri r3, 0x19
+        call i inc_r5_by_r3
+
+        mov rm r7, r4 ; check status of program
+        cmp ri r7, 0
+        jz i scheduler_loop
+
+        cmp ri r7, 1
+        jz i found_program
+
+        jmp i scheduler_loop ; need to cover more program states later, but this will do for now
+    
+
+    ; we've found a program that should be run:
+    found_program:
+
+    ; open up program: 
+    
+
+    gsp i 0x1250 ; save KSP
+
 
     ; set usp
 
     ssp m 0x1300 ; should work, doesn't push/pop so i think stack is safe
 
-    ; works so far
 
     ; load user regs
     call i load_uregs
@@ -44,6 +80,15 @@ kernel: ; round-robin scheduler
 
 
 ; functions:
+
+inc_r4:
+    add ri r4, 1
+    ret
+
+inc_r5_by_r3:
+    add rr r5, r3
+    jc i inc_r4
+    ret
 
 
 
@@ -82,10 +127,6 @@ update_input_buffer: ; last input stored at 0x12C4
     ret
 
 
-save_ksp:
-    gsp i 0x1250
-
-    ret
 
 clear_regs:
 
@@ -218,7 +259,7 @@ ktrap_catch:
 
 
     cmp ri r0, 0b0010 ; halt, since it's a cpu exit we kill the application
-    jz i kill_prog
+    jz i apoptosis ; "kill the program"
 
     cmp ri r0, 0b0011 ; syscall
     jz i handle_syscall
@@ -226,11 +267,11 @@ ktrap_catch:
 
     cmp ri r0, 0b0100 ; IllegalInstruction, should kill the program
     
-    jz i kill_prog
+    jz i apoptosis
 
     cmp ri r0, 0b0101 ; illegal mem access, just kill the program
     
-    jz i kill_prog
+    jz i apoptosis
 
 
 
@@ -304,6 +345,11 @@ get_key:
     jmp i resume_prog_sys
 
 
+
+apoptosis:
+    dbg i 69
+    hlt
+    pnk
 
 ; PIXEL FUNCTIONS:
 ; generally assume that x = r1, y = r2
@@ -538,8 +584,4 @@ pixel_off:
 
 
 
-kill_prog:
-    dbg i 69
-    hlt
-    pnk
 
