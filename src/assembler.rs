@@ -542,7 +542,6 @@ impl Parser {
 
         
         ops.insert("shl".to_string(), (OpKind::Single, OperandLength::Unsigned8));
-        ops.insert("shr".to_string(), (OpKind::Single, OperandLength::Unsigned8));
         ops.insert("sar".to_string(), (OpKind::Single, OperandLength::Unsigned8));
 
         
@@ -551,6 +550,9 @@ impl Parser {
 
         
         ops.insert("mov".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+
+        ops.insert("shr".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("shrw".to_string(), (OpKind::Double, OperandLength::Unsigned8));
 
         
         ops.insert("add".to_string(), (OpKind::Double, OperandLength::Unsigned8));
@@ -1003,6 +1005,7 @@ impl Assembler {
             "gsp" => 0b011_111,
             "pnk" => 0b100_000,
             "dbg" => 0b100_001,
+            "shrw" => 0b100_010,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });

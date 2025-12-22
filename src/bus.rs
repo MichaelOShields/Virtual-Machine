@@ -231,6 +231,17 @@ impl Bus {
         Ok(())
     }
 
+    pub fn get_mutable_ref(&mut self, address: u16, mode: CPUMode, access: Access) -> Result<&mut u8, CPUExit> {
+
+        self.check_access(address, mode, access)?;
+
+        if self.mmio_range.contains(&address) {
+            return Err(CPUExit::Fault(Fault::IllegalMemAccess))
+        }
+        return Ok(&mut self.ram[address as usize]);
+
+    }
+
     pub fn get_range(&mut self, a: u16, b: u16) -> &[u8] { // ONLY EXPOSED TO VM ONLY EXPOSED TO VM ONLY EXPOSED TO VM
         // println!("{:?}", &self.ram[a as usize..b as usize]);
         return &self.ram[a as usize..b as usize];

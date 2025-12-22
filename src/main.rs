@@ -143,9 +143,9 @@ impl ApplicationHandler for App {
             },
 
             WindowEvent::RedrawRequested => {
-                self.vm.step_many(100);
+                self.vm.step_many(200);
                 if !self.vm.cpu.halted {
-                    self.vm.cpu.status();
+                    // self.vm.cpu.status();
                     // self.vm.mem.status();
                 }
                 
@@ -251,6 +251,8 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
     });
     let assembled = assembler.assemble();
 
+    
+
 
     if let Ok(map) = assembled {
 
@@ -298,7 +300,7 @@ fn main() {
     let kernel_stack = 0x2000..0x2400;
 
     // reserved (not passed into Bus::new directly)
-    let vram         = 0x2400..0x3400; // 4 KB
+    let vram         = 0x2400..0x3400; // 4 KB, currently only using 0x2400-0x2900(?)
 
     let mmio         = 0x3400..0x3800; // 1 KB
 

@@ -6,6 +6,11 @@ use crate::binary::{get_bits_lsb, get_bits_msb};
 
 
 
+struct DoubleVal<'a> {
+    a: &'a mut u8,
+    b: u8,
+}
+
 #[allow(dead_code)]
 pub struct Flags {
     carry: bool,
@@ -76,7 +81,7 @@ impl Cpu {
             mode: CPUMode::K,
             access: Access::X,
             instruction_ctr: 0,
-            instruction_lim: 300, // allow 50 instructions before returning control
+            instruction_lim: 1000, // allow 50 instructions before returning control
             kernel_trap_address: trap_addr,
         }
     }
@@ -92,7 +97,7 @@ impl Cpu {
     }
 
     fn get_operand(&mut self, mem: &mut Bus) -> Result<u8, CPUExit> {
-        let result = self.memget(self.pc + 0x02, mem)?;
+        let result = self.memget(self.pc + 2, mem)?;
         self.access = Access::X;
         Ok(result)
     }
@@ -129,18 +134,21 @@ impl Cpu {
         Ok(v)
     }
 
-    fn op_mov(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
-        // println!("{}", reg);
-        match mode {
+    fn double_val<'a>(&'a mut self, mode: u16, reg: u16, mem: &'a mut Bus) -> Result<DoubleVal<'a>, CPUExit> {
+        return Ok(match mode {
             0_u16 => {
                 // r2 to r1
+                
                 // dest src
                 
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
+
+                self.increment_pc(2); // increment by # of bytes in instruction
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = r2;
-                self.increment_pc(2); // increment by # of bytes in instruction
+            
+
+                DoubleVal { a: r1, b: r2 }
             },
             0b0001_u16 => {
                 // m2 to r1
@@ -151,14 +159,16 @@ impl Cpu {
 
                 let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
 
-                let newr1 = self.memget(m2, mem)?;
+                let m2val = self.memget(m2, mem)?;
+
+                self.increment_pc(2);
 
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = newr1;
-                
-                self.increment_pc(2);
+            
+
+                DoubleVal { a: r1, b: m2val }
 
             },
             0b0010_u16 => {
@@ -172,9 +182,11 @@ impl Cpu {
 
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
 
-                self.memset(m1, r2, mem)?;
-                
                 self.increment_pc(2);
+
+                
+                
+                DoubleVal { a: self.memgetmutable(m1, mem)?, b: r2 }
 
             },
             0b0011_u16 => {
@@ -182,32 +194,35 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem)?;
+                self.increment_pc(3); // uses operand -> 3 bytes
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
-                *r1 = i2;
+                
 
-
-                self.increment_pc(3); // uses operand -> 3 bytes
+                DoubleVal { a: r1, b: i2 }
             },
             0b0100_u16 => {
                 // m(i)2 to r1
+            
                 // dest src
 
                 let i21 = self.get_operand(mem)?;
                 self.increment_pc(1);
                 let i22 = self.get_operand(mem)?;
+                self.increment_pc(1);
 
                 let i = (i21 as u16) << 8 | (i22 as u16);
 
                 let mval = self.memget(i, mem)?;
 
+                self.increment_pc(2); // uses operand -> 3 bytes
+
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
+                
 
-                *r1 = mval;
-
-                self.increment_pc(3); // uses operand -> 3 bytes
+                DoubleVal { a: r1, b: mval }
             },
             0b0101_u16 => {
                 // r2 to m(i)1
@@ -219,15 +234,26 @@ impl Cpu {
                 let i11 = self.get_operand(mem)?;
                 self.increment_pc(1);
                 let i12 = self.get_operand(mem)?;
+                self.increment_pc(1);
 
                 let i = (i11 as u16) << 8 | (i12 as u16);
 
-                self.memset(i, r2, mem)?;
+                self.increment_pc(2); // uses operand -> 3 bytes
 
-                self.increment_pc(3); // uses operand -> 3 bytes
+                DoubleVal { a: self.memgetmutable(i, mem)?, b: r2 }
             },
-            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
-        };
+            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc); return Err(CPUExit::Fault(Fault::UnknownAction))},
+        });
+        // Err(CPUExit::Fault(Fault::UnknownAction))
+    }
+
+
+
+    fn op_mov(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+        // println!("{}", reg);
+        let DoubleVal { a, b} = self.double_val(mode, reg, mem)?;
+        *a = b;
+        
         Ok(())
     }   
 
@@ -273,244 +299,21 @@ impl Cpu {
     }
 
     fn op_add(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
-        match mode {
-            0_u16 => {
-                // r2 to r1
-                // dest src
-                
-                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = (*r1).clone();
-                let b = r2;
-
-                let (result, carry) = (*r1).overflowing_add(r2);
-
-                *r1 = result;
-
-                self.signs_add(a, b, result, carry);
-
-                self.increment_pc(2); // increment by # of bytes in instruction
-
-            },
-            0b0001_u16 => {
-                // m2 to r1
-
-                // mem loc stored as r0:r1 or r1:r2 etc
-                let m21 = self.regs[get_bits_lsb(reg, 0, 2) as usize]; // so will add 1 to reg
-                let m22 = self.regs[(get_bits_lsb(reg, 0, 2) + 1) as usize];
-
-                let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
-
-                // println!("regs: {:016b}", reg);
-
-                // println!("r1: {}", self.regs[get_bits_lsb(reg, 0, 2) as usize]);
-                // println!("m2: {}", m2);
-                let b = self.memget(m2, mem)?;
-                
-
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = (*r1).clone();
-                
-
-                // *r1 = mem.get(m2) + *r1;
-
-                let (result, carry) = (a).overflowing_add(b);
-
-
-                *r1 = result;
-
-
-                self.signs_add(a, b, result, carry);
-
-
-
-                
-                self.increment_pc(2);
-
-            },
-            0b0010_u16 => {
-                // r2 to m1
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize]; // so will add 1 to reg
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
-                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-
-                let m1val = self.memget(m1, mem)?;
-
-                let a = m1val.clone();
-                let b = r2;
-
-                let (result, carry) = a.overflowing_add(b);
-
-                self.memset(m1, r2 + m1val, mem)?;
-
-                self.signs_add(a, b, result, carry);
-                
-                self.increment_pc(2);
-
-            },
-            0b0011_u16 => {
-                // i2 to r1
-                // dest src
-
-                let i2 = self.get_operand(mem)?;
-                // println!("{}", i2);
-                // println!("reg: {:016b}", reg);
-                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-
-                let a = (*r1).clone();
-                let b = i2;
-
-                let (result, carry) = a.overflowing_add(b);
-
-
-                *r1 = result;
-
-                self.signs_add(a, b, result, carry);
-
-
-                self.increment_pc(3); // uses operand -> 3 bytes
-            },
-            0b0100_u16 => {
-                // i2 to m1
-                // dest src
-
-                let i2 = self.get_operand(mem)?;
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1 = (m11 as u16) << 8 | (m12 as u16);
-
-                let m1val = self.memget(m1, mem)?;
-
-                let a = m1val.clone();
-                let b = i2;
-
-                let (r, c) = a.overflowing_add(b);
-
-                self.memset(m1, r, mem)?;
-
-                self.signs_add(a, b, r, c);
-
-
-
-
-                self.increment_pc(3);
-
-            },
-            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
-        };
+        let DoubleVal { a, b} = self.double_val(mode, reg, mem)?;
+        let (result, carry) = (*a).overflowing_add(b);
+        *a = result;
+        let aclone = (*a).clone();
+        self.signs_add(aclone, b, result, carry);
         Ok(())
     }
 
 
     fn op_sub(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
-        match mode {
-            0_u16 => {
-                // r2 to r1
-                // dest src
-                
-                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = (*r1).clone();
-                let b = r2;
-
-                let (result, borrow) = a.overflowing_sub(b);
-
-                *r1 = result;
-
-                self.signs_sub(a, b, result, borrow);
-
-                self.increment_pc(2); // increment by # of bytes in instruction
-            },
-            0b0001_u16 => {
-                // m2 to r1
-
-                // mem loc stored as r0:r1 or r1:r2 etc
-                let m21 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-                let m22 = self.regs[(get_bits_lsb(reg, 0, 2) + 1) as usize];
-
-                let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
-
-                let b = self.memget(m2, mem)?;
-
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = (*r1).clone();
-
-                let (result, borrow) = a.overflowing_sub(b);
-
-                *r1 = result;
-
-                self.signs_sub(a, b, result, borrow);
-                
-                self.increment_pc(2);
-
-            },
-            0b0010_u16 => {
-                // r2 to m1
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize]; // so will add 1 to reg
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
-                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-
-                let a = self.memget(m1, mem)?;
-                let b = r2;
-
-                let (result, borrow) = a.overflowing_sub(b);
-
-                self.memset(m1, result, mem)?;
-
-                self.signs_sub(a,b, result, borrow);
-                
-                self.increment_pc(2);
-
-            },
-            0b0011_u16 => {
-                // i2 to r1
-                // dest src
-
-                let i2 = self.get_operand(mem)?;
-                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = *r1;
-                let b = i2;
-                let (result, borrow) = a.overflowing_sub(b);
-                *r1 = result;
-                self.signs_sub(a, b, result, borrow);
-
-
-                self.increment_pc(3); // uses operand -> 3 bytes
-            },
-            0b0100_u16 => {
-                // i2 to m1
-                // dest src
-
-                let i2 = self.get_operand(mem)?;
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1 = (m11 as u16) << 8 | (m12 as u16);
-
-                let m1val = self.memget(m1, mem)?;
-
-                let (result, borrow) = m1val.overflowing_sub(i2);
-                self.memset(m1, result, mem)?;
-                self.signs_sub(m1val, i2, result, borrow);
-
-                self.increment_pc(3);
-
-            },
-            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
-        }
+        let DoubleVal { a, b} = self.double_val(mode, reg, mem)?;
+        let (result, borrow) = (*a).overflowing_sub(b);
+        *a = result;
+        let aclone = (*a).clone();
+        self.signs_sub(aclone, b, result, borrow);
         Ok(())
     }
 
@@ -682,7 +485,7 @@ impl Cpu {
                 // dest src
 
                 let i2 = self.get_operand(mem)?;
-                println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
+                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
@@ -727,10 +530,17 @@ impl Cpu {
                 // r2 to r1
                 // dest src
                 
+                
                 let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 % r2;
+                let result = *r1 % r2;
+
+                *r1 = result;
+
+                self.signs_div(result);
+
+
                 self.increment_pc(2); // increment by # of bytes in instruction
             },
             0b0001_u16 => {
@@ -751,7 +561,11 @@ impl Cpu {
 
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
-                *r1 = *r1 % m2val;
+                let result = *r1 % m2val;
+
+                *r1 = result;
+
+                self.signs_div(result);
                 
                 self.increment_pc(2);
 
@@ -766,12 +580,17 @@ impl Cpu {
 
                 let m1val: u8 = self.memget(m1, mem)?;
 
-                self.memset(m1, m1val % r2, mem)?;
+                let result = m1val % r2;
+
+                self.signs_div(result);
+
+                self.memset(m1, result, mem)?;
                 
                 self.increment_pc(2);
 
             },
             0b0011_u16 => {
+                
                 // i2 to r1
                 // dest src
 
@@ -780,27 +599,14 @@ impl Cpu {
                 let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
 
-                *r1 = *r1 % i2;
+                let result = *r1 % i2;
+
+                *r1 = result;
+
+                self.signs_div(result);
 
 
                 self.increment_pc(3); // uses operand -> 3 bytes
-            },
-            0b0100_u16 => {
-                // i2 to m1
-                // dest src
-
-                let i2 = self.get_operand(mem)?;
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1 = (m11 as u16) << 8 | (m12 as u16);
-
-                let m1val: u8 = self.memget(m1, mem)?;
-
-                self.memset(m1, m1val % i2, mem)?;
-
-                self.increment_pc(3);
-
             },
             _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
         }
@@ -1196,12 +1002,13 @@ impl Cpu {
                 let i1 = self.get_operand(mem)?;
                 self.increment_pc(1);
                 let i2 = self.get_operand(mem)?;
+                self.increment_pc(1);
 
                 let m: u16 = (i1 as u16) << 8 | (i2 as u16); // memory address
 
                 let mval = self.memget(m, mem)?;
 
-                self.increment_pc(3);
+                self.increment_pc(2);
 
                 Ok(mval)
             },
@@ -1245,6 +1052,7 @@ impl Cpu {
                 let i1 = self.get_operand(mem)?;
                 self.increment_pc(1);
                 let i2 = self.get_operand(mem)?;
+                self.increment_pc(1);
 
                 let i = (i1 as u16) << 8 | (i2 as u16);
 
@@ -1253,7 +1061,7 @@ impl Cpu {
                 //     CPUMode::U => self.usp = i,
                 // }
 
-                self.increment_pc(3);
+                self.increment_pc(2);
 
                 Ok(i)
             },
@@ -1262,13 +1070,14 @@ impl Cpu {
                 let i1 = self.get_operand(mem)?;
                 self.increment_pc(1);
                 let i2 = self.get_operand(mem)?;
+                self.increment_pc(1);
 
                 let m: u16 = (i1 as u16) << 8 | (i2 as u16); // memory address
 
                 let mval1 = self.memget(m, mem)?;
                 let mval2 = self.memget(m + 1, mem)?;
 
-                self.increment_pc(3);
+                self.increment_pc(2);
 
                 let final_mem = (mval1 as u16) << 8 | (mval2 as u16);
 
@@ -1374,7 +1183,7 @@ impl Cpu {
     }
 
 
-    fn op_comp(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+    fn op_cmp(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         match mode {
             0b0000_u16 => {
                 // r2 to r1
@@ -1537,9 +1346,9 @@ impl Cpu {
 
         // 0b0000_0000: resume quick
         // 0b0000_0001: get key
-        self.increment_pc(2);
+        self.increment_pc(1);
 
-        println!("-----------------------------------------------------------------------------------------------------------------------");
+        // println!("-----------------------------------------------------------------------------------------------------------------------");
 
         return Err(CPUExit::Syscall);
     }
@@ -1551,12 +1360,12 @@ impl Cpu {
 
         let pc2 = self.pop(mem)?;
         let pc1 = self.pop(mem)?;
-        println!("pc2: {:0x}", pc2);
-        println!("pc1: {:0x}", pc1);
+        // println!("pc2: {:0x}", pc2);
+        // println!("pc1: {:0x}", pc1);
         
         // panic!();
         let new_pc = (pc1 as u16) << 8 | (pc2 as u16);
-        println!("new pc: 0x{:x}", new_pc);
+        // println!("new pc: 0x{:x}", new_pc);
         self.pc = new_pc;
 
         self.mode = CPUMode::U;
@@ -1564,7 +1373,7 @@ impl Cpu {
         self.access = Access::X;
 
 
-        println!("-----------------------------------------------------------------------------------------------------------------------");
+        // println!("-----------------------------------------------------------------------------------------------------------------------");
 
 
 
@@ -1637,34 +1446,16 @@ impl Cpu {
 
 
     fn op_shr(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
-        match mode {
-            0b0000_u16 => {
-                // r
-                
-                let r = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+        let DoubleVal { a, b} = self.double_val(mode, reg, mem)?;
+        *a >>= b;
 
-                *r >>= 1;
+        Ok(())
+    }
 
-                self.increment_pc(2);
-            },
-            0b0001_u16 => {
-                // m
+    fn op_shrw(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+        let DoubleVal { a, b} = self.double_val(mode, reg, mem)?;
+        *a = (*a).rotate_right(b as u32) as u8;
 
-                // mem loc stored as r0:r1 or r1:r2 etc
-                let m1 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m2 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m: u16 = (m1 as u16) << 8 | (m2 as u16); // memory address
-
-                let unshifted = self.memget(m, mem)?;
-
-                self.memset(m, unshifted >> 1, mem)?;
-
-                self.increment_pc(2);
-
-            },
-            _ => (),
-        }
         Ok(())
     }
 
@@ -1866,8 +1657,8 @@ impl Cpu {
             let pc1: u8 = get_bits_msb(self.pc, 0, 7) as u8;
             let pc2: u8 = get_bits_msb(self.pc, 8, 15) as u8;
 
-            println!("pc: {:0x}", self.pc);
-            println!("SP: {:0x}", self.sp);
+            // println!("pc: {:0x}", self.pc);
+            // println!("SP: {:0x}", self.sp);
 
 
             // save exit pc
@@ -1893,9 +1684,9 @@ impl Cpu {
                 Err(_e) => {println!("memset (exit id) failed"); return;}
             };
 
-            println!("0x1310: {:08b}", mem.force_get(0x1310));
-            println!("Error: {:?}", exit);
-            println!("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+            // println!("0x1310: {:08b}", mem.force_get(0x1310));
+            //println!("Error: {:?}", exit);
+            //println!("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
             self.pc = self.kernel_trap_address;
         }
@@ -1907,9 +1698,17 @@ impl Cpu {
     }
 
     fn memget(&mut self, address: u16, mem: &mut Bus) -> Result<u8, CPUExit> {
+        let orig_access = self.access;
         self.access = Access::R;
-        Ok(self.memgetcore(address, mem)?)
+        let result = self.memgetcore(address, mem)?;
+        self.access = orig_access;
+        Ok(result)
     }
+
+    fn memgetmutable<'a>(&mut self, address: u16, mem: &'a mut Bus) -> Result<&'a mut u8, CPUExit> {
+        // self.access = Access::R;
+        Ok(mem.get_mutable_ref(address, self.mode, Access::W)?)
+    }   
 
     fn memgetcore(&mut self, address: u16, mem: &mut Bus) -> Result<u8, CPUExit> {
         Ok(mem.get(address, self.mode, self.access)?)
@@ -1978,6 +1777,7 @@ impl Cpu {
             0b011_111 => "gsp",
             0b100_000 => "pnk",
             0b100_001 => "dbg",
+            0b100_010 => "shrw",
             0b111_111 => "hlt",
             _ => panic!("Received invalid instruction {:08b}", op),
         }.to_string()
@@ -1990,6 +1790,9 @@ impl Cpu {
 
         self.access = Access::X;
 
+        let instruction1 = self.memgetcore(self.pc, mem)?;
+        let instruction2 = self.memgetcore(self.pc + 1, mem)?;
+
 
         let instruction: u16 =
         (self.memgetcore(self.pc, mem)? as u16) << 8
@@ -1998,14 +1801,15 @@ impl Cpu {
         let opcode = get_bits_msb(instruction, 0, 5);
         let mode = get_bits_msb(instruction, 6, 9);
         let reg = get_bits_msb(instruction, 10, 15);
-        self.status();
+
+
+        // println!("\n\n\nInstruction mnemonic: {}", self.convert_instruction(opcode));
+        // println!("Instruction: 0b{:08b}_{:08b}\nPC: 0x{:0x}\nSP: 0x{:0x}\nMode: {:?}\nAccess:{:?}", instruction1, instruction2, self.pc, self.sp, self.mode, self.access);
+        // mem.status();
+        // self.status();
 
 
         if self.mode == CPUMode::U {
-            if self.instruction_ctr >= self.instruction_lim {
-                self.instruction_ctr = 0;
-                return Err(CPUExit::Timer);
-            }
 
             match opcode {
                 0b011011_u16 => return Err(CPUExit::Fault(Fault::IllegalInstruction)), // ssp
@@ -2014,10 +1818,7 @@ impl Cpu {
             }
         }
 
-        println!("Instruction: 0b{:08b}\nPC: 0x{:0x}\n SP: 0x{:0x}", (instruction & 0xFF00) >> 8 as u8, self.pc, self.sp);
-        println!("Instruction mnemonic: {}", self.convert_instruction(opcode));
-
-        mem.status();
+        
 
 
         match opcode {
@@ -2040,7 +1841,7 @@ impl Cpu {
             0b010000_u16 => {self.op_jnz(mode, reg, mem)?; }, // JUMP !Z
             0b010001_u16 => {self.op_jg(mode, reg, mem)?; }, // JUMP >
             0b010010_u16 => {self.op_jl(mode, reg, mem)?; }, // JUMP <
-            0b010011_u16 => {self.op_comp(mode, reg, mem)?; }, // COMPARE
+            0b010011_u16 => {self.op_cmp(mode, reg, mem)?; }, // COMPARE
             0b010100_u16 => {self.op_push(mode, reg, mem)?; }, // PUSH
             0b010101_u16 => {self.op_pop(mode, reg, mem)?; }, // POP
             0b010110_u16 => {self.op_call(mode, reg, mem)?; }, // CALL
@@ -2055,6 +1856,7 @@ impl Cpu {
             0b011111_u16 => {self.op_gsp(mode, reg, mem)?; }, // GET STACK PTR
             0b100_000_u16 => {self.op_pnk(mem); }, // PANIC
             0b100_001_u16 => {self.op_dbg(mode, reg, mem)?; }, // debug
+            0b100_010_u16 => {self.op_shrw(mode, reg, mem)?; }, // shift right wrap
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);
@@ -2070,6 +1872,10 @@ impl Cpu {
 
         if self.mode == CPUMode::U {
             self.instruction_ctr += 1;
+            if self.instruction_ctr >= self.instruction_lim {
+                self.instruction_ctr = 0;
+                return Err(CPUExit::Timer);
+            }
         }
 
         // println!("SP: {:0x}", self.sp);

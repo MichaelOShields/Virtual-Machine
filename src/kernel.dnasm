@@ -2,7 +2,6 @@
 
 
 
-
 kernel:
 
     call i load_kregs ; works
@@ -267,16 +266,29 @@ resume_prog:
 
 handle_syscall:
 
-    call i load_syscall_regs
-    cmp ri r0, 0
+    call i load_syscall_regs ; get registers saved from user, but only those relevant to the syscall
+
+    cmp ri r0, 0 ; no syscall, just return
+
     jz i resume_prog
-    cmp ri r0, 1 ; getting key
-    
+
+
+    cmp ri r0, 1 ; see if there's a new input, if so return it
+
     jz i get_key
-    cmp ri r0, 2 ; draw a pixel in [r1:r2] as r3
-    ; mov mr r1, r3
-    jz i draw_pixel
+
+
+    cmp ri r0, 2 ; turn on pixel with x = r1 and y = r2
+
+    jz i pixel_on
+
+    cmp ri r0, 3 ; turn off pixel with x = r1 and y = r2
+
+    jz i pixel_off
+
+    
     jmp i resume_prog_sys
+
 
 
 get_key:
@@ -285,9 +297,175 @@ get_key:
     ; now we're done w/ the syscall so jump to 
     jmp i resume_prog_sys
 
-draw_pixel: ; draw pixel in [r1:r2] as r3
-    mov mr r1, r3
+
+
+; PIXEL FUNCTIONS:
+; generally assume that x = r1, y = r2
+; should call before_pixel_op beforehand (obv)
+; should return 1 in r0 if it worked, 0 in r0 if it failed
+
+; universal pixel op functions:
+
+check_pixel_bounds: ; make sure we aren't doing anything illegal here
+    ; compare r1 (x) to 127, jump if greater than to do nothing probably
+    cmp ri r1, 128
+    jg i failed_pixel_op
+
+
+
+    ; same with r2 (y)
+    cmp ri r2, 128
+    jg i failed_pixel_op
+
+    ret
+
+
+before_pixel_op:
+    call i check_pixel_bounds ; if this fails, it won't return; could that lead to a stack overflow/leak?
+
+    ret
+
+
+
+failed_pixel_op:
+    ; if this is called, it means that the operation didn't work; hence, there are 2 bytes in the stack that aren't accounted for
+    ; later, pop them? maybe
+
+    dbg i 204
+    pnk
+
+
+    mov ri r0, 0 ; signal failed operation
     jmp i resume_prog_sys
+
+
+
+; pixel op helper functions (should only be called after before_pixel_op):
+
+; convert from x,y to vram addr:
+convert_xy:
+    ; assumes x = r1, y = r2
+    ; pretty sure my math works out so no jump carries are needed, which should be more performant than just looping and spamming them
+    ; will set r1 to high byte, r2 to low byte, puts the x,y pixel byte in r3
+
+    ; move x and y to r4 and r5
+
+    mov rr r4, r1 ; x is in r4 now
+    mov rr r5, r2 ; y is in r5 now
+    
+    ; now initialize high and low byte
+    mov ri r1, hi(0x2400) ; vram base pos
+    mov ri r2, lo(0x2400)
+
+    ; let's start with y:
+    
+    ; need to get y * 16, will put it in r6
+    mov rr r6, r5
+    ; mul ri r6, 16
+
+    ; now, do high += (y * 16) / 8
+    div ri r6, 16
+
+    add rr r1, r6
+
+    ; get original Y back for low += (y * 16) % 8
+    mov rr r6, r5
+    
+    mul ri r6, 16
+
+    ; mod ri r6, 8
+
+    add rr r2, r6
+
+    ; now let's do x, which is pretty simple: add x/8 to low byte
+
+    mov rr r6, r4
+    div ri r6, 8
+    add rr r2, r6
+
+
+    ; now let's handle r3:
+    mov rr r6, r4 ; move x so we can perform ops on it
+
+
+
+
+    
+
+    ; now just do 0b1000_0000 >> (x % 8), then OR that into mem
+
+    mov ri r3, 0b0000_0001
+
+    mod ri r6, 8 ; modulo op, get remainder
+
+    jz i grab_last_byte_bit
+
+    shrw rr r3, r6
+
+    grabbed_bit:
+
+
+    ret
+
+grab_last_byte_bit: ; this is when we reach a new byte, but need to get the pixel that's just to the left of the leftmost bit
+    ; assumes r1:r2 are high and low
+    sub ri r2, 1
+    mov ri r3, 0b0000_0001
+    jmp i grabbed_bit
+
+
+
+
+; pixel ops:
+
+
+
+
+pixel_on:
+
+    call i before_pixel_op
+
+    
+    
+    call i convert_xy
+    ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
+
+    
+    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
+
+    or rm r3, r1 ; get actual pixels in mem & OR them
+    
+
+    ; put r7 (final byte) into mem
+    mov mr r1, r3
+
+
+    jmp i resume_prog_sys
+
+
+
+
+pixel_off:
+
+    call i before_pixel_op
+
+    
+    
+    call i convert_xy
+    ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
+
+    
+    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
+
+    xor rm r3, r1 ; get actual pixels in mem & OR them
+    
+
+    ; put r7 (final byte) into mem
+    mov mr r1, r3
+
+
+    jmp i resume_prog_sys
+
 
 
 kill_prog:

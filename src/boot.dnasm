@@ -7,8 +7,5 @@
 
 ssp m 0x1250 ; LOAD KSP
 
-; pnk
-
-
 
 jmp i 0x400

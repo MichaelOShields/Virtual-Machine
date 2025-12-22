@@ -1,12 +1,21 @@
 .org 0x3800
 
 
-mov ri r1, hi(0x2400)
-mov ri r2, lo(0x2400)
-mov ri r3, 255
+; init x, y as 64, 64
+mov ri r1, 64
+.byte 0
+mov ri r2, 64
 
 
 jmp i loop
+
+
+.org 0x3803 ; factor to move cursor by
+multiplier:
+.byte 3
+
+
+
 
 ; test
 
@@ -15,17 +24,10 @@ jmp i loop
 loop:
 
 
+
     call i check_key
 
-    call i write_sys
-
-
-
-    after_key:
-
-    ; call i write_sys
-
-    after_write:
+    call i on_sys
 
     jmp i loop
 
@@ -35,17 +37,6 @@ loop:
 
 
 no_key:
-    ret
-
-
-all_keys:
-    call i clear_disp
-    ret
-
-clear_disp:
-    mov ri r3, 0
-    call i write_sys
-    mov ri r3, 255
     ret
 
 
@@ -80,46 +71,47 @@ check_key:
     ret
     ;jmp i after_key
 
-
-inc_r1:
-    add ri r1, 1
+all_keys:
+    call i off_sys
     ret
-
-dec_r1:
-    sub ri r1, 1
-    ret
-
 
 go_right:
     call i all_keys
-    add ri r2, 1
-    jc i inc_r1
+    add rm r1, 0x3803
+    ; jc i inc_r1
     ret
 
 go_left:
     call i all_keys
-    sub ri r2, 1
-    jc i dec_r1
+    ; sub ri r2, 1
+    ; jc i dec_r1
+
+    sub rm r1, 0x3803
+
     ret
 
-write_sys:
+on_sys:
     mov ri r0, 2
+    sys
+    ret
+
+off_sys:
+    mov ri r0, 3
     sys
     ret
 
 go_up:
     call i all_keys
-    sub ri r2, 16
-    jc i dec_r1
+    sub rm r2, 0x3803
+    ; jc i dec_r1
     ret
 
 go_down:
 
     call i all_keys
-    add ri r2, 16
-    jc i inc_r1
+
+    add rm r2, 0x3803
+    ; jc i inc_r1
     ret
 
 
-dbg i 240
-pnk
