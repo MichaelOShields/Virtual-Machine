@@ -1,4 +1,5 @@
 .org 0x1200
+; 196 bytes of letters
 .const "space", 0
 .byte 0b00000_000
 .byte 0b00000_000
@@ -234,7 +235,7 @@
 .byte 0b00100_000
 .byte 0b00100_000
 
-
+.const "z", 26
 .byte 0b11111_000
 .byte 0b00001_000
 .byte 0b00010_000
@@ -243,7 +244,7 @@
 .byte 0b10000_000
 .byte 0b11111_000
 
-
+.const "caret", 27
 .byte 0b10000_000
 .byte 0b10000_000
 .byte 0b10000_000
@@ -276,38 +277,13 @@
 .byte 0
 .byte 0
 
-
-.org 0x1300 ; user info
-
-; user sp:
-.byte 0xFF
-.byte 0xFE
-
-.org 0x1302
-; user regs start at 0x1302:
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-
-; upc at 0x130A:
-.org 0x130A
-.byte 0x38
-.org 0x130B
-.byte 0x00
+.org 0x125A ; exit info
+.byte 0 ; reason
 
 
 
-; exit info @ 0x1310
-.org 0x1310
-.byte 0 ; reason, others are opt. regs
-.byte 0
-.byte 0
-.byte 0
+.org 0x1260 ; task admin resources
+.byte 0 ; current task index
 
 
 

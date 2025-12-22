@@ -1,0 +1,328 @@
+.org 0x1300 ; handling user programs/states
+
+
+; USER 0
+
+.org 0x1300          ; user 0 SP
+.byte 0xFF
+.byte 0xFE
+
+.org 0x1302          ; user 0 regs (r0–r7)
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x130A          ; user 0 flags (4 bytes)
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x130E          ; user 0 state / priority / wait. 0 means "not running"
+.byte 0
+
+.org 0x130F          ; user 0 PC
+.byte 0x38
+.byte 0x00
+
+.org 0x1311          ; padding (8 bytes)
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+; USER 1
+
+.org 0x1319
+.byte 0xFF
+.byte 0xFE
+
+.org 0x131B
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x1323
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x1327
+.byte 0
+
+.org 0x1328
+.byte 0x38
+.byte 0x00
+
+.org 0x132A
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+; USER 2
+
+.org 0x1332
+.byte 0xFF
+.byte 0xFE
+
+.org 0x1334
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x133C
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x1340
+.byte 0
+
+.org 0x1341
+.byte 0x38
+.byte 0x00
+
+.org 0x1343
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+; USER 3
+
+.org 0x134B
+.byte 0xFF
+.byte 0xFE
+
+.org 0x134D
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x1355
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x1359
+.byte 0
+
+.org 0x135A
+.byte 0x38
+.byte 0x00
+
+.org 0x135C
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+; USER 4
+
+.org 0x1364
+.byte 0xFF
+.byte 0xFE
+
+.org 0x1366
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x136E
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x1372
+.byte 0
+
+.org 0x1373
+.byte 0x38
+.byte 0x00
+
+.org 0x1375
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+; USER 5
+
+.org 0x137D
+.byte 0xFF
+.byte 0xFE
+
+.org 0x137F
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x1387
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x138B
+.byte 0
+
+.org 0x138C
+.byte 0x38
+.byte 0x00
+
+.org 0x138E
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+; USER 6
+
+.org 0x1396
+.byte 0xFF
+.byte 0xFE
+
+.org 0x1398
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x13A0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x13A4
+.byte 0
+
+.org 0x13A5
+.byte 0x38
+.byte 0x00
+
+.org 0x13A7
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+
+
+; USER 7
+
+.org 0x13AF
+.byte 0xFF
+.byte 0xFE
+
+.org 0x13B1
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x13B9
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+
+.org 0x13BD
+.byte 0
+
+.org 0x13BE
+.byte 0x38
+.byte 0x00
+
+.org 0x13C0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0
+.byte 0

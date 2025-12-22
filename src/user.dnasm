@@ -61,6 +61,7 @@ check_key:
 
     cmp ri r0, 27
     jz i go_up
+    jl i write_letter
     cmp ri r0, 28
     jz i go_down
     cmp ri r0, 29
@@ -115,3 +116,8 @@ go_down:
     ret
 
 
+write_letter:
+    mov rr r3, r0
+    mov ri r0, 4
+    sys
+    ret

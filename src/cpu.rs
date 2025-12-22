@@ -1596,6 +1596,38 @@ impl Cpu {
         Ok(())
     }
 
+    fn op_gfls(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+
+
+        // in future, can condense to store all flags in 1 byte; currently too lazy lol
+
+        let addr = self.single_val_addr(mode, reg, mem)?;
+
+        // let flags = Flags {carry: false, sign: false, zero: false, overflow: false,};
+        self.memset(addr, self.flags.carry as u8, mem)?;
+        self.memset(addr + 1, self.flags.sign as u8, mem)?;
+        self.memset(addr + 2, self.flags.zero as u8, mem)?;
+        self.memset(addr + 3, self.flags.overflow as u8, mem)?;
+
+        Ok(())
+    }
+
+    fn op_sfls(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+
+
+        // in future, can condense to store all flags in 1 byte; currently too lazy lol
+
+        let address = self.single_val_addr(mode, reg, mem)?;
+
+        // let flags = Flags {carry: false, sign: false, zero: false, overflow: false,};
+        self.flags.carry = self.memget(address, mem)? != 0;
+        self.flags.sign = self.memget(address + 1, mem)? != 0;
+        self.flags.zero = self.memget(address + 2, mem)? != 0;
+        self.flags.overflow = self.memget(address + 3, mem)? != 0;
+
+        Ok(())
+    }
+
     fn op_pnk(&mut self, mem: &mut Bus) {
         panic!("Panicked @ request.");
     }
@@ -1679,12 +1711,12 @@ impl Cpu {
 
 
             // push exit reason
-            match self.memset(0x1310, exit_id, mem) {
+            match self.memset(0x125A, exit_id, mem) {
                 Ok(()) => (),
                 Err(_e) => {println!("memset (exit id) failed"); return;}
             };
 
-            // println!("0x1310: {:08b}", mem.force_get(0x1310));
+            // println!("0x125A: {:08b}", mem.force_get(0x125A));
             //println!("Error: {:?}", exit);
             //println!("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
@@ -1778,6 +1810,8 @@ impl Cpu {
             0b100_000 => "pnk",
             0b100_001 => "dbg",
             0b100_010 => "shrw",
+            0b100_011 => "gfls",
+            0b100_100 => "sfls",
             0b111_111 => "hlt",
             _ => panic!("Received invalid instruction {:08b}", op),
         }.to_string()
@@ -1857,6 +1891,8 @@ impl Cpu {
             0b100_000_u16 => {self.op_pnk(mem); }, // PANIC
             0b100_001_u16 => {self.op_dbg(mode, reg, mem)?; }, // debug
             0b100_010_u16 => {self.op_shrw(mode, reg, mem)?; }, // shift right wrap
+            0b100_011_u16 => {self.op_gfls(mode, reg, mem)?; }, // get flags
+            0b100_100_u16 => {self.op_sfls(mode, reg, mem)?; }, // set flags
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

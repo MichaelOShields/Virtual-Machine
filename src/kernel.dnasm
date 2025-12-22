@@ -2,11 +2,11 @@
 
 
 
-kernel:
+kernel: ; round-robin scheduler
 
     call i load_kregs ; works
     ; poll events
-    call i check_input ; works
+    call i poll_input ; works
 
 
     ; main kernel code before returning to prog
@@ -44,6 +44,9 @@ kernel:
 
 
 ; functions:
+
+
+
 halt:
     hlt
 
@@ -53,7 +56,7 @@ no_input:
     ret
 
 
-check_input:
+poll_input:
     mov rm r2, 0x3400
     cmp ri r2, 1
     jz i update_input_buffer ; only if a new key's been pressed/is in the deque
@@ -203,7 +206,7 @@ ktrap_catch:
 
     ssp m 0x1250 ; LOAD KSP
 
-    mov rm r0, 0x1310 ; get reason
+    mov rm r0, 0x125A ; get reason
 
     ; diagnose cpuexit
 
@@ -286,13 +289,16 @@ handle_syscall:
 
     jz i pixel_off
 
+    cmp ri r0, 4 ; write letter at (x: r1, y: r2) specified by r3
+    jz i write_letter
+
     
     jmp i resume_prog_sys
 
 
 
 get_key:
-    call i check_input
+    call i poll_input
     mov rm r0, 0x87FF
     ; now we're done w/ the syscall so jump to 
     jmp i resume_prog_sys
@@ -307,11 +313,11 @@ get_key:
 ; universal pixel op functions:
 
 check_pixel_bounds: ; make sure we aren't doing anything illegal here
+
+
     ; compare r1 (x) to 127, jump if greater than to do nothing probably
     cmp ri r1, 128
     jg i failed_pixel_op
-
-
 
     ; same with r2 (y)
     cmp ri r2, 128
@@ -414,11 +420,69 @@ grab_last_byte_bit: ; this is when we reach a new byte, but need to get the pixe
     jmp i grabbed_bit
 
 
+go_down:
+    add ri r2, 16
+    jc i inc_r1
+    ret
+
+inc_r1:
+    add ri r1, 1
+    ret
+
+next_letter_line:
+    mov rm r7, r4
+    mov mr r1, r7
+    call i go_down
+    add ri r5, 1
+    ret
 
 
 ; pixel ops:
 
 
+write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
+    call i before_pixel_op
+
+    ; in addition to before_pixel_op bound checks:
+    ; letters are 5x7, so ensure that they won't write into illegal mem:
+    
+    ; compare r1 (x) to 127, jump if greater than to do nothing probably
+    cmp ri r1, 123  ; 128-5 = 123
+    jg i failed_pixel_op
+
+    ; same with r2 (y)
+    cmp ri r2, 121 ; 128-7 = 121
+    jg i failed_pixel_op
+
+    ; now the main function:
+
+    push r r3 ; save r3 b/c convert_xy tramples it
+
+    ; go 1 line lower
+    add ri r2, 1
+
+    call i convert_xy
+
+    pop r r3
+
+
+    ; start writing:
+    mov ri r4, hi(0x1200)
+    mov ri r5, lo(0x1200)
+
+    mul ri r3, 7
+    add rr r5, r3           ; get ptr aligned w/ correct letter
+
+
+    call i next_letter_line
+    call i next_letter_line
+    call i next_letter_line
+    call i next_letter_line
+    call i next_letter_line
+    call i next_letter_line
+    call i next_letter_line
+
+    jmp i resume_prog_sys
 
 
 pixel_on:
@@ -465,6 +529,12 @@ pixel_off:
 
 
     jmp i resume_prog_sys
+
+
+
+
+
+
 
 
 

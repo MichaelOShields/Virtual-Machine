@@ -305,10 +305,47 @@ fn main() {
     let mmio         = 0x3400..0x3800; // 1 KB
 
     // user space
-    let user_code  = 0x3800..0x7000; // core loop should start at 0x4500 (for austerity)    
-    let user_data  = 0x7000..0x8800;
-    let user_heap  = 0x8800..0xC800;
-    let user_stack = 0xC800..0xFFFF; // goes 0xFFFE
+    // differentiate tasks for memory safety
+    let user_code_0  = 0x3800..0x4000;
+    let user_data_0  = 0x4000..0x4200;
+    let user_heap_0  = 0x4200..0x4C00;
+    let user_stack_0 = 0x4C00..0x5000;
+
+    let user_code_1  = 0x5000..0x5800;
+    let user_data_1  = 0x5800..0x5A00;
+    let user_heap_1  = 0x5A00..0x6400;
+    let user_stack_1 = 0x6400..0x6800;
+
+    let user_code_2  = 0x6800..0x7000;
+    let user_data_2  = 0x7000..0x7200;
+    let user_heap_2  = 0x7200..0x7C00;
+    let user_stack_2 = 0x7C00..0x8000;
+
+    let user_code_3  = 0x8000..0x8800;
+    let user_data_3  = 0x8800..0x8A00;
+    let user_heap_3  = 0x8A00..0x9400;
+    let user_stack_3 = 0x9400..0x9800;
+
+    let user_code_4  = 0x9800..0xA000;
+    let user_data_4  = 0xA000..0xA200;
+    let user_heap_4  = 0xA200..0xAC00;
+    let user_stack_4 = 0xAC00..0xB000;
+
+    let user_code_5  = 0xB000..0xB800;
+    let user_data_5  = 0xB800..0xBA00;
+    let user_heap_5  = 0xBA00..0xC400;
+    let user_stack_5 = 0xC400..0xC800;
+
+    let user_code_6  = 0xC800..0xD000;
+    let user_data_6  = 0xD000..0xD200;
+    let user_heap_6  = 0xD200..0xDC00;
+    let user_stack_6 = 0xDC00..0xE000;
+
+    let user_code_7  = 0xE000..0xE800;
+    let user_data_7  = 0xE800..0xEA00;
+    let user_heap_7  = 0xEA00..0xF400;
+    let user_stack_7 = 0xF400..0xF800;
+
 
     let cpu = Cpu::new(kernel_traps.start);
     let vc  = VideoController::new(128, 128, vram.start);
@@ -326,28 +363,62 @@ fn main() {
         vram,
         mmio,
 
-        user_code,
-        user_data,
-        user_heap,
-        user_stack,
+        // later: make this way more concise. probably use a vec or array
+        user_code_0,
+        user_data_0,
+        user_heap_0,
+        user_stack_0,
+
+        user_code_1,
+        user_data_1,
+        user_heap_1,
+        user_stack_1,
+
+        user_code_2,
+        user_data_2,
+        user_heap_2,
+        user_stack_2,
+
+        user_code_3,
+        user_data_3,
+        user_heap_3,
+        user_stack_3,
+
+        user_code_4,
+        user_data_4,
+        user_heap_4,
+        user_stack_4,
+
+        user_code_5,
+        user_data_5,
+        user_heap_5,
+        user_stack_5,
+
+        user_code_6,
+        user_data_6,
+        user_heap_6,
+        user_stack_6,
+
+        user_code_7,
+        user_data_7,
+        user_heap_7,
+        user_stack_7,
+
     );
 
 
     // load bootloader
     load_assembly(&mut memory, "src\\boot".to_string());
 
-
-
     load_assembly(&mut memory, "src\\kernel".to_string());
 
     load_assembly(&mut memory, "src\\kernel_data".to_string());
 
+    load_assembly(&mut memory, "src\\program_handling".to_string());
 
     load_assembly(&mut memory, "src\\user".to_string());
+    
 
-    // load_assembly(&mut memory, "src\\kernel_trap".to_string());
-
-    // return;
     let vm  = Vm::new(memory, vc, cpu);
 
     
