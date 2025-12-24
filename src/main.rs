@@ -136,6 +136,7 @@ impl ApplicationHandler for App {
                     Key::Named(NamedKey::Backspace) => 50,
                     Key::Named(NamedKey::Enter) => 51,
                     Key::Named(NamedKey::Escape) => 52,
+                    Key::Named(NamedKey::Space) => 53,
                     _ => 0,
                 };
 

@@ -56,6 +56,8 @@ check_key:
     cmp ri r0, 30
     jz i go_right
 
+    jmp i no_key
+
     ret
     ;jmp i after_key
 

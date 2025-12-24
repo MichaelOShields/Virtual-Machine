@@ -4,6 +4,8 @@
 
 kernel: ; round-robin scheduler
 
+
+
     ; call i load_kregs ; works
     ; poll events
     call i poll_input ; works
@@ -23,7 +25,7 @@ kernel: ; round-robin scheduler
     mov rm r0, 0x1260                               ; current task index stored in mem
     mov ri r4, hi(0x130E)                               ; user program #0 state/starting point to search
     mov ri r5, lo(0x130E)
-    
+
 
     mov ri r3, 0x19                                 ; # bytes between programs; 0x19 * task_index gives us the task_index program state
 
@@ -39,12 +41,12 @@ kernel: ; round-robin scheduler
 
         ; pnk
 
-        cmp ri r0, 7
-        jz i reset_r0
-
         mov ri r3, 0x19
         add rr r5, r3
         add ri r0, 1 ; keep current_task register up-to-date w/ indexed task state byte
+
+        cmp ri r0, 8
+        jz i reset_r0
 
         after_reset:
 
@@ -188,6 +190,13 @@ reset_r0:
     mov ri r0, 0
     mov ri r5, lo(0x130E)
 
+    mov mr 0x19FF, r0
+
+
+    push r r2
+    call i poll_input
+    pop r r2
+
     ; push r r0
     ; mov ri r0, 0
     ; mov mr 0x19FF, r0
@@ -206,8 +215,8 @@ halt:
 
 no_input:
     
-    mov ri r2, 0
-    mov mr 0x19FF, r2 ; key hasn't been pressed so we want to record that
+    ; mov ri r2, 0
+    ; mov mr 0x19FF, r2 ; key hasn't been pressed so we want to record that
 
     ret
 
@@ -222,6 +231,8 @@ poll_input:
 
 
 update_input_buffer:
+
+    
 
 
     mov rm r2, 0x3401
@@ -620,15 +631,15 @@ write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
     ; letters are 5x7, so ensure that they won't write into illegal mem:
     
     ; compare r1 (x) to 127, jump if greater than to do nothing probably
-    cmp ri r1, 123  ; 128-5 = 123
-    jg i failed_pixel_op
+    ; cmp ri r1, 123  ; 128-5 = 123
+    ; jg i failed_pixel_op
 
-    cmp ri r1, 5
-    jl i failed_pixel_op
+    ; cmp ri r1, 5
+    ; jl i failed_pixel_op
 
     ; same with r2 (y)
-    cmp ri r2, 121 ; 128-7 = 121
-    jg i failed_pixel_op
+    ; cmp ri r2, 121 ; 128-7 = 121
+    ; jg i failed_pixel_op
 
     ; now the main function:
 
@@ -945,7 +956,7 @@ set_waiting_input:
     pop r r0
 
     ; have already saved everything, but we probably want to go to the next program in the scheduler:
-    jmp i kernel
+    jmp i resume_prog
 
 
 
@@ -953,7 +964,7 @@ set_waiting_input:
 get_key:
     ; call i poll_input
     mov rm r0, 0x19FF
-    
+
     ; push r r0
     ; mov ri r0, 0
     ; mov mr 0x19FF, r0

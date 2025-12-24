@@ -24,12 +24,16 @@ loop_full_row:
 
 starting:
     mov ri r1, 1
-    mov ri r2, 1
+    mov ri r2, 0
+    jmp i loop
 
 loop:
 
     mov ri r0, 5
     sys
+    
+    dbg r r1
+    dbg r r2
 
     call i check_key
 
@@ -43,25 +47,71 @@ no_key:
 check_key:
 
 
+
     mov ri r0, 1 ; check key syscall id
     sys
+
+    cmp ri r0, 50
+    jz i backspace
+
+    cmp ri r0, 53
+    jz i space
 
 
     cmp ri r0, 0
     jz i no_key
 
-    cmp ri r0, 27
+    cmp ri r0, 26
     jl i write_letter
+    jz i write_letter
+    jg i no_key
+
 
 
     ret
 
+go_forward:
+    add ri r1, 8
+    cmp ri r1, 121
+    jg i backspace
+    ret
+
+
+go_backward:
+    sub ri r1, 8
+    cmp ri r1, 128
+    jg i go_forward
+    ret
 
 write_letter:
+    
     mov rr r3, r0
+
     mov ri r0, 4
     sys
 
-    add ri r1, 8
+    call i go_forward
     ret
     
+
+space:
+    
+    mov ri r3, 0 ; space
+
+    mov ri r0, 4
+    sys
+
+    call i go_forward
+
+    ret
+
+backspace:
+
+    call i go_backward
+    
+    mov ri r3, 0 ; space
+
+    mov ri r0, 4
+    sys
+
+    ret
