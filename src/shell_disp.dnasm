@@ -1,0 +1,29 @@
+.org 0x5000
+
+
+; shell setup:
+; first row of pixels is off
+; 2-8 rows are letters
+; 9th row is off
+; 10th row is on
+
+; start:
+mov ri r1, 0
+mov ri r2, 9
+
+loop_full_row:
+    cmp ri r1, 128
+    jz i loop
+
+    mov ri r0, 2 ; turn on pixel
+    sys
+
+    add ri r1, 1
+    jmp i loop_full_row
+
+
+
+loop:
+
+
+    jmp i loop ; do nothing for now

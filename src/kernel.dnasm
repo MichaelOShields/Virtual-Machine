@@ -4,7 +4,7 @@
 
 kernel: ; round-robin scheduler
 
-    call i load_kregs ; works
+    ; call i load_kregs ; works
     ; poll events
     call i poll_input ; works
 
@@ -13,7 +13,7 @@ kernel: ; round-robin scheduler
 
     ; to run userprog, store kernel regs, store kernel stack ptr, set/pop user program stack ptr, run user program
 
-    call i save_kregs ; do we even need this?
+    ; call i save_kregs ; do we even need this?
 
 
 
@@ -51,7 +51,16 @@ kernel: ; round-robin scheduler
         
         jz i scheduler_loop
 
-        jnz i found_program
+        cmp ri r7, 1 ; runnable
+
+        jz i found_program
+
+        cmp ri r7, 2
+        jz i check_waiting
+
+        check_rejection: ; if the waiting condition isn't satisfied yet
+
+        jmp i scheduler_loop
 
         ; cmp ri r7, 1
         ; jz i found_program
@@ -64,6 +73,12 @@ kernel: ; round-robin scheduler
     found_program:
     ; r0 contains the next task index
     mov mr 0x1260, r0 ; setting next task index in mem
+
+    push r r1
+    mov rm r1, 0x1260
+    dbg r r1
+
+    pop r r1
 
     ; now, let's load some stuff up:
 
@@ -119,7 +134,7 @@ kernel: ; round-robin scheduler
     push r r5
 
     ; let's set some flags before kretting:
-    mov ri r3, 0x1260
+    mov rm r3, 0x1260
     mul ri r3, 0x19
 
     mov ri r4, hi(0x130A)
@@ -143,6 +158,23 @@ kernel: ; round-robin scheduler
 
 ; functions:
 
+
+check_waiting:
+
+    ; if we're waiting, we know we're waiting for input (for now).
+    mov rm r6, 0x19FF
+    cmp ri r6, 0
+    jnz i check_acceptance ; found the program, let it run
+    jz i check_rejection ; keep looking
+
+    check_acceptance:
+
+    mov ri r6, 1 ; set to runnable
+    mov mr r4, r6 ; set the runnable state to runnable
+    jmp i found_program
+
+
+
 reset_r0:
     mov ri r0, 0
     mov ri r5, lo(0x130E)
@@ -158,12 +190,10 @@ no_input:
     mov ri r2, 0
     mov mr 0x19FF, r2 ; key hasn't been pressed so we want to record that
 
-    pop r r2
     ret
 
 
 poll_input:
-    push r r2
     mov rm r2, 0x3400
     cmp ri r2, 1
     jz i update_input_buffer ; only if a new key's been pressed/is in the deque
@@ -172,7 +202,7 @@ poll_input:
     ret
 
 
-update_input_buffer: ; last input stored at 0x12C4
+update_input_buffer:
 
 
     mov rm r2, 0x3401
@@ -185,7 +215,6 @@ update_input_buffer: ; last input stored at 0x12C4
 
     mov mr 0x19FF, r2 ; put into mem buffer
 
-    pop r r2
 
     ; moved last input to 0x12C4
     ret
@@ -206,31 +235,31 @@ clear_regs:
     ret
 
 
-load_kregs:
+; load_kregs:
     
-    mov rm r0, 0x1252 ; works
-    mov rm r1, 0x1253
-    mov rm r2, 0x1254
-    mov rm r3, 0x1255
-    mov rm r4, 0x1256
-    mov rm r5, 0x1257
-    mov rm r6, 0x1258
-    mov rm r7, 0x1259
+;     mov rm r0, 0x1252 ; works
+;     mov rm r1, 0x1253
+;     mov rm r2, 0x1254
+;     mov rm r3, 0x1255
+;     mov rm r4, 0x1256
+;     mov rm r5, 0x1257
+;     mov rm r6, 0x1258
+;     mov rm r7, 0x1259
 
-    ret
+;     ret
 
-save_kregs:
+; save_kregs:
 
-    mov mr 0x1252, r0 ; works
-    mov mr 0x1253, r1
-    mov mr 0x1254, r2
-    mov mr 0x1255, r3
-    mov mr 0x1256, r4
-    mov mr 0x1257, r5
-    mov mr 0x1258, r6
-    mov mr 0x1259, r7
+;     mov mr 0x1252, r0 ; works
+;     mov mr 0x1253, r1
+;     mov mr 0x1254, r2
+;     mov mr 0x1255, r3
+;     mov mr 0x1256, r4
+;     mov mr 0x1257, r5
+;     mov mr 0x1258, r6
+;     mov mr 0x1259, r7
 
-    ret
+;     ret
 
 
 load_syscall_regs: ; just bring back syscall-specific regs
@@ -426,232 +455,6 @@ save_flags_ktrap:
 
     gfls m r2
 
-; KERNEL TRAP:
-
-.org 0x1000 ; kernel trap
-
-
-
-
-
-ktrap_catch:
-
-    gfls i 0x1808 ; temp store flags in heap, later MUST return them
-
-    
-    call i save_uregs_ktrap
-
-    mov rm r0, 0x1260
-    mul ri r0, 0x19
-    ; now task_index * 0x19 is stored in r0
-
-
-    ; upc is in stack
-
-    pop r r6
-    pop r r7
-
-    ; works so far; in user testing rn, 2 datapts remain on the stack (the ret addr)
-
-
-    ; store upc: / works
-    mov ri r2, hi(0x130F) ; big endian
-    mov ri r3, lo(0x130F)
-    
-    add rr r3, r0 ; get low byte/index of UPC tracker
-
-    mov mr r2, r6
-
-    add ri r3, 1
-
-    mov mr r2, r7
-
-    ; should be good so far
-    
-
-
-    ; save USP:
-
-    mov rm r0, 0x1260
-    mul ri r0, 0x19
-
-    mov ri r2, hi(0x1300)
-    mov ri r3, lo(0x1300)
-    add rr r3, r0
-
-    gsp m r2
-
-    ssp m 0x1250 ; LOAD KSP
-
-    ; save flags previously stored in 0x1808 (heap)
-    ; use r2,3,4,5
-
-    mov rm r2, 0x1808
-    mov rm r3, 0x1809
-    mov rm r4, 0x180A
-    mov rm r5, 0x180B
-
-    mov ri r6, hi(0x130A)
-    mov ri r7, lo(0x130A)
-    mov rm r0, 0x1260
-    mul ri r0, 0x19
-    add rr r7, r0
-
-
-    mov mr r6, r2
-    add ri r7, 1
-    mov mr r6, r3
-    add ri r7, 1
-    mov mr r6, r4
-    add ri r7, 1
-    mov mr r6, r5
-
-
-
-    
-
-    mov rm r7, 0x125A ; get reason
-
-    
-
-    ; diagnose cpuexit
-
-    cmp ri r7, 0b0000 ; none, probably do nothing
-    jz i resume_prog
-
-    cmp ri r7, 0b0001 ; timer, return control to kernel
-    jz i resume_prog
-
-
-    cmp ri r7, 0b0010 ; halt, since it's a cpu exit we kill the application
-    jz i apoptosis ; "kill the program"
-
-    cmp ri r7, 0b0011 ; syscall / works so far
-    jz i handle_syscall
-
-
-    cmp ri r7, 0b0100 ; IllegalInstruction, should kill the program
-    
-    jz i apoptosis
-
-    cmp ri r7, 0b0101 ; illegal mem access, just kill the program
-    
-    jz i apoptosis
-
-
-
-
-    jmp i kernel
-
-
-
-
-resume_prog_sys:
-    ; let's move r0, r1, and r2 onto the heap so we can restore them later:
-    mov mr 0x1800, r0
-    ; mov mr 0x1801, r1
-    ; mov mr 0x1802, r2
-    ; good so far
-
-    ; now let's set r0 to prog_idx * 0x19
-    mov rm r0, 0x1260
-    mul ri r0, 0x19
-
-    mov ri r1, hi(0x1300)
-    mov ri r2, lo(0x1300)
-    add rr r2, r0
-
-    ssp m r1
-
-
-    ; the last thing we need to do with the registers is to push the UPC (big-endian)
-    mov ri r1, hi(0x130F)
-    mov ri r2, lo(0x130F)
-    add rr r2, r0
-
-    push m r1 ; hi byte
-    add ri r2, 1
-    push m r1 ; lo byte
-    
-    ; now let's return the registers:
-    mov rm r0, 0x1800
-    ; mov rm r1, 0x1801
-    ; mov rm r2, 0x1802
-
-    ; load user regs
-    call i load_uregs_after_syscall
-
-
-    kret
-
-
-resume_prog:
-    ; set usp
-    mov ri r2, hi(0x1300)
-    mov ri r3, lo(0x1300)
-    add rr r3, r0
-
-    ssp m r2
-
-    ; push UPC (big endian) for KRET:
-    mov ri r2, hi(0x130F)
-    mov ri r3, lo(0x130F)
-    add rr r3, r0
-
-    push m r2
-    add ri r3, 1
-    push m r2
-
-    ; load user regs
-    mov ri r4, hi(0x1302)
-    mov ri r5, lo(0x1302)
-    add rr r5, r0
-    call i load_uregs ; assumes [r4:r5] is alr correct
-
-    kret
-
-
-handle_syscall:
-
-    call i load_syscall_regs ; get registers saved from user, but only those relevant to the syscall
-
-    cmp ri r0, 0 ; no syscall, just return
-
-    jz i resume_prog
-
-
-    cmp ri r0, 1 ; see if there's a new input, if so return it
-
-    jz i get_key
-
-
-    cmp ri r0, 2 ; turn on pixel with x = r1 and y = r2
-
-    jz i pixel_on
-
-    cmp ri r0, 3 ; turn off pixel with x = r1 and y = r2
-    jz i pixel_off
-
-    cmp ri r0, 4 ; write letter at (x: r1, y: r2) specified by r3
-    jz i write_letter
-
-    
-    jmp i resume_prog_sys
-
-
-
-get_key:
-    call i poll_input
-    mov rm r0, 0x19FF
-    ; now we're done w/ the syscall so jump to 
-    jmp i resume_prog_sys
-;
-
-
-apoptosis: ; "progammed cell death" just kill the program
-    dbg i 69
-    hlt
-    pnk
 
 ; PIXEL FUNCTIONS:
 ; generally assume that x = r1, y = r2
@@ -685,8 +488,11 @@ failed_pixel_op:
     ; if this is called, it means that the operation didn't work; hence, there are 2 bytes in the stack that aren't accounted for
     ; later, pop them? maybe
 
-    dbg i 204
-    pnk
+
+    ; pop bytes:
+    pop r r6
+    pop r r7
+    ; will be deleted I think
 
 
     mov ri r0, 0 ; signal failed operation
@@ -873,6 +679,271 @@ pixel_off:
     jmp i resume_prog_sys
 
 
+
+
+
+; KERNEL TRAP:
+
+.org 0x1000 ; kernel trap
+
+
+
+
+
+ktrap_catch:
+
+    gfls i 0x1808 ; temp store flags in heap, later MUST return them
+
+    
+    call i save_uregs_ktrap
+
+    mov rm r0, 0x1260
+    mul ri r0, 0x19
+    ; now task_index * 0x19 is stored in r0
+
+
+    ; upc is in stack
+
+    pop r r6
+    pop r r7
+
+    ; works so far; in user testing rn, 2 datapts remain on the stack (the ret addr)
+
+
+    ; store upc: / works
+    mov ri r2, hi(0x130F) ; big endian
+    mov ri r3, lo(0x130F)
+    
+    add rr r3, r0 ; get low byte/index of UPC tracker
+
+    mov mr r2, r6
+
+    add ri r3, 1
+
+    mov mr r2, r7
+
+    ; should be good so far
+    
+
+
+    ; save USP:
+
+    mov rm r0, 0x1260
+    mul ri r0, 0x19
+
+    mov ri r2, hi(0x1300)
+    mov ri r3, lo(0x1300)
+    add rr r3, r0
+
+    gsp m r2
+
+    ssp m 0x1250 ; LOAD KSP
+
+    ; save flags previously stored in 0x1808 (heap)
+    ; use r2,3,4,5
+
+    mov rm r2, 0x1808
+    mov rm r3, 0x1809
+    mov rm r4, 0x180A
+    mov rm r5, 0x180B
+
+    mov ri r6, hi(0x130A)
+    mov ri r7, lo(0x130A)
+    mov rm r0, 0x1260
+    mul ri r0, 0x19
+    add rr r7, r0
+
+
+    mov mr r6, r2
+    add ri r7, 1
+    mov mr r6, r3
+    add ri r7, 1
+    mov mr r6, r4
+    add ri r7, 1
+    mov mr r6, r5
+
+
+
+    
+
+    mov rm r7, 0x125A ; get reason
+
+    
+
+    ; diagnose cpuexit
+
+    cmp ri r7, 0b0000 ; none, probably do nothing
+    jz i resume_prog
+
+    cmp ri r7, 0b0001 ; timer, return control to kernel
+    jz i resume_prog
+
+
+    cmp ri r7, 0b0010 ; halt, since it's a cpu exit we kill the application
+    jz i apoptosis ; "kill the program"
+
+    cmp ri r7, 0b0011 ; syscall / works so far
+    jz i handle_syscall
+
+
+    cmp ri r7, 0b0100 ; IllegalInstruction, should kill the program
+    
+    jz i apoptosis
+
+    cmp ri r7, 0b0101 ; illegal mem access, just kill the program
+    
+    jz i apoptosis
+
+
+
+
+    jmp i kernel
+
+
+
+
+resume_prog_sys:
+    ; let's move r0, r1, and r2 onto the heap so we can restore them later:
+    mov mr 0x1800, r0
+    ; mov mr 0x1801, r1
+    ; mov mr 0x1802, r2
+    ; good so far
+
+    ; now let's set r0 to prog_idx * 0x19
+    mov rm r0, 0x1260
+    mul ri r0, 0x19
+
+    mov ri r1, hi(0x1300)
+    mov ri r2, lo(0x1300)
+    add rr r2, r0
+
+    ssp m r1
+
+
+    ; the last thing we need to do with the registers is to push the UPC (big-endian)
+    mov ri r1, hi(0x130F)
+    mov ri r2, lo(0x130F)
+    add rr r2, r0
+
+    push m r1 ; hi byte
+    add ri r2, 1
+    push m r1 ; lo byte
+    
+    ; now let's return the registers:
+    mov rm r0, 0x1800
+    ; mov rm r1, 0x1801
+    ; mov rm r2, 0x1802
+
+    ; load user regs
+    call i load_uregs_after_syscall
+
+
+    kret
+
+
+resume_prog:
+    ; set usp
+    ; mov ri r2, hi(0x1300)
+    ; mov ri r3, lo(0x1300)
+    ; add rr r3, r0
+
+    ; ssp m r2
+
+    ; ; push UPC (big endian) for KRET:
+    ; mov ri r2, hi(0x130F)
+    ; mov ri r3, lo(0x130F)
+    ; add rr r3, r0
+
+    ; push m r2
+    ; add ri r3, 1
+    ; push m r2
+
+    ; ; load user regs
+    ; mov ri r4, hi(0x1302)
+    ; mov ri r5, lo(0x1302)
+    ; add rr r5, r0
+    ; call i load_uregs ; assumes [r4:r5] is alr correct
+
+    ; kret
+
+    jmp i kernel
+
+
+handle_syscall:
+
+    call i load_syscall_regs ; get registers saved from user, but only those relevant to the syscall
+
+    cmp ri r0, 0 ; no syscall, just return
+
+    jz i resume_prog
+
+
+    cmp ri r0, 1 ; see if there's a new input, if so return it
+
+    jz i get_key
+
+
+    cmp ri r0, 2 ; turn on pixel with x = r1 and y = r2
+
+    jz i pixel_on
+
+    cmp ri r0, 3 ; turn off pixel with x = r1 and y = r2
+    jz i pixel_off
+
+    cmp ri r0, 4 ; write letter at (x: r1, y: r2) specified by r3
+    jz i write_letter
+
+    cmp ri r0, 5 ; change to waiting for input (input "mode" specified in r3)
+    jz i set_waiting_input
+
+    
+    jmp i resume_prog_sys
+
+
+set_waiting_input:
+    mov ri r5, 0x1260
+    mul ri r5, 0x19
+
+    mov ri r6, hi(0x130E) ; byte specifying runnable state; set to 2
+    mov ri r7, lo(0x130E)
+    
+    add rr r7, r5
+    ; input mode specified in r3
+
+    mov ri r4, 2 ; "waiting" runnable state
+    mov mr r6, r4 ; set to waiting state
+
+    mov ri r6, hi(0x1311) ; byte detailing waiting reason
+    mov ri r7, lo(0x1311)
+    add rr r7, r5
+
+    push r r0
+    mov ri r0, 1
+    mov mr r6, r0 ; later will add multiple waiting modes
+    pop r r0
+
+    ; have already saved everything, but we probably want to go to the next program in the scheduler:
+    jmp i kernel
+
+
+
+
+get_key:
+    ; call i poll_input
+    mov rm r0, 0x19FF
+    push r r0
+    mov ri r0, 0
+    mov mr 0x19FF, r0
+    pop r r0
+    ; now we're done w/ the syscall so jump to 
+    jmp i resume_prog_sys
+;
+
+
+apoptosis: ; "progammed cell death" just kill the program
+    dbg i 69
+    hlt
+    pnk
 
 
 

@@ -138,8 +138,11 @@ impl ApplicationHandler for App {
                     Key::Named(NamedKey::Escape) => 52,
                     _ => 0,
                 };
-                self.vm.mem.key_inject(keycode);
-                println!("Key pressed: {}", keycode);
+
+                if keycode != 0 {
+                    self.vm.mem.key_inject(keycode);
+                    println!("Key pressed: {}", keycode);
+                }
             },
 
             WindowEvent::RedrawRequested => {
@@ -418,7 +421,9 @@ fn main() {
 
     load_assembly(&mut memory, "src\\program_handling".to_string());
 
-    load_assembly(&mut memory, "src\\user".to_string());
+    load_assembly(&mut memory, "src\\mouse".to_string());
+
+    load_assembly(&mut memory, "src\\shell_disp".to_string());
     
 
     let vm  = Vm::new(memory, vc, cpu);

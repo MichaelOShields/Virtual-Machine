@@ -1,180 +1,144 @@
-.org 0x400
-
-jmp i start
-
-handle_esc:
-    hlt
-    ret
+.org 0x3800
 
 
-
-inc_r0:
-    add ri r0, 1
-    ret
-
-dec_r0:
-    sub ri r0, 1
-    ret
-
-go_down:
-    add ri r1, 16
-    jc i inc_r0
-    ret
-
-go_up:
-    sub ri r1, 16
-    jc i dec_r0
-    ret
+; init x, y as 64, 64
+mov ri r1, 64
+mov ri r2, 64
 
 
-go_left_big:
-    mov ri r3, 0b0000_0001
-    sub ri r1, 1
-    jc i dec_r0
-    ret
+.const "multiplier", 5
 
 
-go_left:
-    shl r r3
-    cmp ri r3, 0
-    jz i go_left_big
-    ret
+jmp i loop
 
-go_right_big:
-    mov ri r3, 0b1000_0000
-    add ri r1, 1
-    jc i inc_r0
-    ret
-
-go_right:
-    shr r r3
-    cmp ri r3, 0
-    jz i go_right_big
-    ret
-
-clear_cursor:
-    mov ri r2, 0
-    mov mr r0, r2
-    ret
-
-
-
-render_mouse:
-    mov mr r0, r3
-    ret
-
-
-handle_up: ; 27
-    ; for now reserve r0:r1 as crsr
-    call i clear_cursor
-
-    call i go_up
-    call i go_up
-    call i go_up
-    call i go_up
-
-    call i render_mouse
-
-
-    ret
-
-handle_down: ; 28
-    ; for now reserve r0:r1 as crsr
-    call i clear_cursor
-    call i go_down
-    call i go_down
-    call i go_down
-    call i go_down
-
-    call i render_mouse
-
-    ret
-
-
-handle_left: ; 28
-    ; for now reserve r0:r1 as crsr
-    call i clear_cursor
-    call i go_left
-    call i go_left
-    call i go_left
-    call i go_left
-
-    call i render_mouse
-
-    ret
-
-handle_right: ; 28
-    ; for now reserve r0:r1 as crsr
-    call i clear_cursor
-    call i go_right
-    call i go_right
-    call i go_right
-    call i go_right
-   
-    call i render_mouse
-
-    ret
-
-handle_input:
-    mov ri r6, 0x34
-    mov ri r7, 0x01 ; input
-    mov rm r5, r6 ; input id is stored in r5
-    
-    ; start w/ more essential keys:
-    cmp ri r5, 52 ; esc key
-    jz i handle_esc ; halt
-
-    cmp ri r5, 28 ; down key
-    jz i handle_down
-
-    cmp ri r5, 27 ; up key
-    jz i handle_up
-
-    cmp ri r5, 29 ; left key
-    jz i handle_left
-
-    cmp ri r5, 30 ; right key
-    jz i handle_right
-
-    ; handle cursor mvmt
-
-    ret
-
-
-check_if_keys: ; works
-    mov ri r6, 0x34
-    mov ri r7, 0x00
-    mov rm r5, r6
-    cmp ri r5, 1            ; jz if there is an available input
-    jz i handle_input
-    ret
-
-
-render:
-    ; render mouse
-
-
-; kernel loop:
-; handle input
-; update active app
-; render
-
-start:
-mov ri r0, hi(0x24)
-mov ri r1, lo(0x00)
-mov ri r3, 0b1000_0000 ; will be shr/shl as cursor moves
 
 loop:
 
-    call i check_if_keys
+    ; set to waiting:
+    mov ri r0, 5 ; syscall waiting for input key
+    sys ; next, should only run if there's available input i believe
+
+    call i check_key
+
+    call i on_sys
 
     jmp i loop
 
 
-hlt
+
+; functions:
+
+
+no_key:
+    ret
+
+
+check_key:
+
+
+    mov ri r0, 1 ; check key syscall id
+    sys
+
+
+    cmp ri r0, 0
+    jz i no_key
+
+
+    cmp ri r0, 27
+    jz i go_up
+    jl i write_letter
+    cmp ri r0, 28
+    jz i go_down
+    cmp ri r0, 29
+    jz i go_left
+    cmp ri r0, 30
+    jz i go_right
+
+    ret
+    ;jmp i after_key
+
+
+no_move:
+    ret
+
+
+all_keys:
+    call i off_sys
+    ret
 
 
 
-.org 0x1000
-pop r r7
-hlt
+
+on_sys:
+    mov ri r0, 2
+    sys
+    ret
+
+off_sys:
+    mov ri r0, 3
+    sys
+    ret
+
+go_right:
+    call i all_keys
+    add ri r1, multiplier
+    
+    cmp ri r1, 127
+    jg i upper_bound_x
+    ret
+
+go_left:
+    call i all_keys
+    ; sub ri r2, 1
+    ; jc i dec_r1
+
+    sub ri r1, multiplier
+    cmp ri r1, 128
+    jg i lower_bound_x
+
+    ret
+
+
+go_up:
+    call i all_keys
+    sub ri r2, multiplier
+
+    cmp ri r2, 11 ; if we go below 0, it wraps around to 255, so should check above 128
+    jg i lower_bound_y
+
+    ret
+
+
+go_down:
+
+    call i all_keys
+
+    add ri r2, multiplier
+
+    cmp ri r2, 127
+    jg i upper_bound_y
+
+    ret
+
+lower_bound_y:
+    mov ri r2, 12
+    ret
+
+upper_bound_y:
+    mov ri r2, 127
+    ret
+
+lower_bound_x:
+    mov ri r1, 1
+    ret
+
+upper_bound_x:
+    mov ri r1, 127
+    ret
+
+
+write_letter:
+    mov rr r3, r0
+    mov ri r0, 4
+    sys
+    ret

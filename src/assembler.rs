@@ -157,7 +157,8 @@ impl Lexer {
 
         if self.peek().is_none() {
 
-            return Err(LexerError{message: String::from("EOF before string end.")});
+            // return Err(LexerError{message: String::from("EOF before string end.")});
+            return Ok(Token::Comment(string_token));
 
         }
         else {

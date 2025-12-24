@@ -49,7 +49,7 @@ impl Keyboard {
     }
 
     pub fn pop_key(&mut self) -> u8 {
-        println!("Popping key...");
+        // println!("Popping key...");
         return match self.queue.pop_front() {
             Some(k) => k,
             None => 0b0000_0000,
@@ -57,7 +57,9 @@ impl Keyboard {
     }
 
     pub fn inject_key(&mut self, key: u8) {
-        self.queue.push_back(key);
+        if self.queue.len() < 20 {
+            self.queue.push_back(key);
+        }
     }
 
     pub fn status(&mut self) -> u8 {
@@ -66,7 +68,7 @@ impl Keyboard {
             status = status | 0b0000_0001;
         }
 
-        println!("Status: {:08b}", status);
+        // println!("Status: {:08b}", status);
 
         return status;
     }

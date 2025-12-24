@@ -298,7 +298,7 @@ impl Bus {
     }
 
     pub fn mmio_get(&mut self, address: u16) -> Result<u8, CPUExit> {
-        println!("Getting from MMIO...");
+        // println!("Getting from MMIO...");
         let keyboard_status: u16 = self.mmio_range.start;
         if address == keyboard_status {
             return Ok(self.keyboard.status());
