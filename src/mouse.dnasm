@@ -104,7 +104,7 @@ go_up:
     sub ri r2, multiplier
 
     cmp ri r2, 11 ; if we go below 0, it wraps around to 255, so should check above 128
-    jg i lower_bound_y
+    jl i lower_bound_y
 
     ret
 

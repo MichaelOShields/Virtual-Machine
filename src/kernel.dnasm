@@ -76,7 +76,7 @@ kernel: ; round-robin scheduler
 
     push r r1
     mov rm r1, 0x1260
-    dbg r r1
+    ; dbg r r1
 
     pop r r1
 
