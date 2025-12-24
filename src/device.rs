@@ -57,7 +57,7 @@ impl Keyboard {
     }
 
     pub fn inject_key(&mut self, key: u8) {
-        if self.queue.len() < 20 {
+        if self.queue.len() < 1 {
             self.queue.push_back(key);
         }
     }

@@ -12,7 +12,7 @@ mov ri r1, 1
 mov ri r2, 9
 
 loop_full_row:
-    cmp ri r1, 128
+    cmp ri r1, 129
     jz i starting
 
     mov ri r0, 2 ; turn on pixel
@@ -24,7 +24,7 @@ loop_full_row:
 
 starting:
     mov ri r1, 1
-    mov ri r2, 0
+    mov ri r2, 1
     jmp i loop
 
 loop:
@@ -56,6 +56,7 @@ check_key:
 
     cmp ri r0, 53
     jz i space
+    
 
 
     cmp ri r0, 0

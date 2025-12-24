@@ -22,7 +22,7 @@ kernel: ; round-robin scheduler
     ; pick next program:
     ; start w/ current task index:
 
-    mov rm r0, 0x1260                               ; current task index stored in mem
+    mov rm r0, 0x12C8                               ; current task index stored in mem
     mov ri r4, hi(0x130E)                               ; user program #0 state/starting point to search
     mov ri r5, lo(0x130E)
 
@@ -76,17 +76,11 @@ kernel: ; round-robin scheduler
 
     found_program:
     ; r0 contains the next task index
-    mov mr 0x1260, r0 ; setting next task index in mem
-
-    push r r1
-    mov rm r1, 0x1260
-    ; dbg r r1
-
-    pop r r1
+    mov mr 0x12C8, r0 ; setting next task index in mem
 
     ; now, let's load some stuff up:
 
-    gsp i 0x1250 ; save KSP
+    gsp i 0x12C5 ; save KSP
     
     ; set USP
     mul ri r0, 0x19 ; can now do r0 + (whatever the starting byte is for whichever thing we need to check) and it gets us the right addr (i think)
@@ -138,7 +132,7 @@ kernel: ; round-robin scheduler
     push r r5
 
     ; let's set some flags before kretting:
-    mov rm r3, 0x1260
+    mov rm r3, 0x12C8
     mul ri r3, 0x19
 
     mov ri r4, hi(0x130A)
@@ -172,7 +166,7 @@ check_waiting:
     ; pop r r2
 
 
-    mov rm r6, 0x19FF
+    mov rm r6, 0x17FF
 
     cmp ri r6, 0
     jnz i check_acceptance ; found the program, let it run
@@ -190,7 +184,7 @@ reset_r0:
     mov ri r0, 0
     mov ri r5, lo(0x130E)
 
-    mov mr 0x19FF, r0
+    mov mr 0x17FF, r0
 
 
     push r r2
@@ -199,7 +193,7 @@ reset_r0:
 
     ; push r r0
     ; mov ri r0, 0
-    ; mov mr 0x19FF, r0
+    ; mov mr 0x17FF, r0
     ; pop r r0
 
     ; push r r2
@@ -216,7 +210,7 @@ halt:
 no_input:
     
     ; mov ri r2, 0
-    ; mov mr 0x19FF, r2 ; key hasn't been pressed so we want to record that
+    ; mov mr 0x17FF, r2 ; key hasn't been pressed so we want to record that
 
     ret
 
@@ -243,7 +237,7 @@ update_input_buffer:
 
     ; otherwise continue
 
-    mov mr 0x19FF, r2 ; put into mem buffer
+    mov mr 0x17FF, r2 ; put into mem buffer
 
 
     ; moved last input to 0x12C4
@@ -295,7 +289,7 @@ clear_regs:
 load_syscall_regs: ; just bring back syscall-specific regs
 
     ; let's set r0 to current_idx * 0x19
-    mov rm r0, 0x1260
+    mov rm r0, 0x12C8
     mul ri r0, 0x19
 
     mov ri r6, hi(0x1302)
@@ -325,7 +319,7 @@ load_uregs_after_syscall:
 
 
     ; let's get r0 = current_task * 0x19
-    mov rm r0, 0x1260
+    mov rm r0, 0x12C8
     mul ri r0, 0x19
 
     ; let's use r6:r7 as the mem addr and handle them later
@@ -429,7 +423,7 @@ save_uregs_ktrap:
     mov mr 0x1806, r6
     mov mr 0x1807, r7
 
-    mov rm r0, 0x1260 ; get current task index
+    mov rm r0, 0x12C8 ; get current task index
     mul ri r0, 0x19 ; # of bytes per program state
 
     mov ri r4, hi(0x1302)
@@ -645,12 +639,11 @@ write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
 
     push r r3 ; save r3 b/c convert_xy tramples it
 
-    ; go 1 line lower
-    add ri r2, 1
 
     call i convert_xy
 
     pop r r3
+    
 
 
     ; start writing:
@@ -659,6 +652,7 @@ write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
 
     mul ri r3, 7
     add rr r5, r3           ; get ptr aligned w/ correct letter
+
 
 
     call i next_letter_line
@@ -730,7 +724,7 @@ ktrap_catch:
     
     call i save_uregs_ktrap
 
-    mov rm r0, 0x1260
+    mov rm r0, 0x12C8
     mul ri r0, 0x19
     ; now task_index * 0x19 is stored in r0
 
@@ -761,7 +755,7 @@ ktrap_catch:
 
     ; save USP:
 
-    mov rm r0, 0x1260
+    mov rm r0, 0x12C8
     mul ri r0, 0x19
 
     mov ri r2, hi(0x1300)
@@ -770,7 +764,7 @@ ktrap_catch:
 
     gsp m r2
 
-    ssp m 0x1250 ; LOAD KSP
+    ssp m 0x12C5 ; LOAD KSP
 
     ; save flags previously stored in 0x1808 (heap)
     ; use r2,3,4,5
@@ -782,7 +776,7 @@ ktrap_catch:
 
     mov ri r6, hi(0x130A)
     mov ri r7, lo(0x130A)
-    mov rm r0, 0x1260
+    mov rm r0, 0x12C8
     mul ri r0, 0x19
     add rr r7, r0
 
@@ -799,7 +793,7 @@ ktrap_catch:
 
     
 
-    mov rm r7, 0x125A ; get reason
+    mov rm r7, 0x12C7 ; get reason
 
     
 
@@ -843,7 +837,7 @@ resume_prog_sys:
     ; good so far
 
     ; now let's set r0 to prog_idx * 0x19
-    mov rm r0, 0x1260
+    mov rm r0, 0x12C8
     mul ri r0, 0x19
 
     mov ri r1, hi(0x1300)
@@ -934,7 +928,7 @@ handle_syscall:
 
 
 set_waiting_input:
-    mov rm r5, 0x1260
+    mov rm r5, 0x12C8
     mul ri r5, 0x19
 
     mov ri r6, hi(0x130E) ; byte specifying runnable state; set to 2
@@ -963,11 +957,11 @@ set_waiting_input:
 
 get_key:
     ; call i poll_input
-    mov rm r0, 0x19FF
+    mov rm r0, 0x17FF
 
     ; push r r0
     ; mov ri r0, 0
-    ; mov mr 0x19FF, r0
+    ; mov mr 0x17FF, r0
     ; pop r r0
     ; now we're done w/ the syscall so jump to 
     jmp i resume_prog_sys

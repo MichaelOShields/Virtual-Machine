@@ -57,9 +57,10 @@ impl MemRange {
             Self::Vram(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             Self::Mmio(_) => mode == CPUMode::K && matches!(access, Access::R | Access::W),
             
-            Self::UserCode(_, t) => 
+            Self::UserCode(_, t) => {
+                // println!("t (code): {}", t);
                 (mode == CPUMode::K && matches!(access, Access::X | Access::R)) || 
-                (mode == CPUMode::U && matches!(access, Access::X | Access::R) && (*t == current_task)),
+                (mode == CPUMode::U && matches!(access, Access::X | Access::R) && (*t == current_task))},
             
             Self::UserData(_, t) =>  
                 (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
@@ -70,8 +71,10 @@ impl MemRange {
                 (mode == CPUMode::U && matches!(access, Access::R | Access::W) && (*t == current_task)),
 
             Self::UserStack(_, t) => 
-                (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
-                (mode == CPUMode::U && matches!(access, Access::R | Access::W) && (*t == current_task)),
+                {
+                    // println!("t (stack): {}", t);
+                    (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
+                    (mode == CPUMode::U && matches!(access, Access::R | Access::W) && (*t == current_task))},
 
 
             _ => panic!("Couldn't identify memory range."),
@@ -268,7 +271,7 @@ impl Bus {
             };
             if actual_range.contains(&address) {
                 // println!("Range: {:?}", range);
-                let result = range.check_access(mode, access, self.ram[0x1260]); // dynamically grab current task
+                let result = range.check_access(mode, access, self.ram[0x12C8]); // dynamically grab current task
                 match &result {
                     Ok(()) => (),
                     Err(e) => {

@@ -6,7 +6,7 @@ mov ri r1, 64
 mov ri r2, 64
 
 
-.const "multiplier", 5
+.const "multiplier", 10
 
 
 call i on_sys

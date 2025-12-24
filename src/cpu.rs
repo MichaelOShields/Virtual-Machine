@@ -1710,7 +1710,7 @@ impl Cpu {
 
 
             // push exit reason
-            match self.memset(0x125A, exit_id, mem) {
+            match self.memset(0x12C7, exit_id, mem) {
                 Ok(()) => (),
                 Err(_e) => {println!("memset (exit id) failed"); return;}
             };

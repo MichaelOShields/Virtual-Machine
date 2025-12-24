@@ -255,40 +255,29 @@
 ; ends @ 0x12C3
 
 
-; kernel info: @0x1250
+; kernel info: @0x12C5
 
-.org 0x1250
+.org 0x12C5
 
-; kernel SP:
+; kernel SP: (formerly 1250)
 
 .byte 0x23
 .byte 0xFF
 
 
-.org 0x1252
-; kernel regs:
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-
-.org 0x125A ; exit info
+.org 0x12C7 ; exit info (formerly 125A)
 .byte 0 ; reason
 
 
 
-.org 0x1260 ; task admin resources
+.org 0x12C8 ; task admin resources (formerly 1260)
 .byte 0 ; CURRENT TASK INDEX
 
 
 
-; kernel mmio starts at 0x19FF
+; kernel mmio starts at 0x17FF
 
-.org 0x19FF
+.org 0x17FF
 ; 0x19FF is the location of the key buffer
 .byte 0
 
