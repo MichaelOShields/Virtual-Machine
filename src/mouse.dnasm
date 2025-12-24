@@ -9,6 +9,8 @@ mov ri r2, 64
 .const "multiplier", 5
 
 
+call i on_sys
+
 jmp i loop
 
 
@@ -45,8 +47,8 @@ check_key:
 
 
     cmp ri r0, 27
+    ; jl i write_letter
     jz i go_up
-    jl i write_letter
     cmp ri r0, 28
     jz i go_down
     cmp ri r0, 29

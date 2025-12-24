@@ -8,12 +8,12 @@
 ; 10th row is on
 
 ; start:
-mov ri r1, 0
+mov ri r1, 1
 mov ri r2, 9
 
 loop_full_row:
     cmp ri r1, 128
-    jz i loop
+    jz i starting
 
     mov ri r0, 2 ; turn on pixel
     sys
@@ -22,8 +22,46 @@ loop_full_row:
     jmp i loop_full_row
 
 
+starting:
+    mov ri r1, 1
+    mov ri r2, 1
 
 loop:
 
+    mov ri r0, 5
+    sys
+
+    call i check_key
+
 
     jmp i loop ; do nothing for now
+
+
+no_key:
+    ret
+
+check_key:
+
+
+    mov ri r0, 1 ; check key syscall id
+    sys
+
+
+    cmp ri r0, 0
+    jz i no_key
+
+    cmp ri r0, 27
+    jl i write_letter
+
+
+    ret
+
+
+write_letter:
+    mov rr r3, r0
+    mov ri r0, 4
+    sys
+
+    add ri r1, 8
+    ret
+    
