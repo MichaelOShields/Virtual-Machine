@@ -3,26 +3,16 @@
 
 ; init x, y as 64, 64
 mov ri r1, 64
-.byte 0
 mov ri r2, 64
+
+
+.const "multiplier", 3
 
 
 jmp i loop
 
 
-.org 0x3803 ; factor to move cursor by
-multiplier:
-.byte 3
-
-
-
-
-; test
-
-
-.org 0x4500 ; core loop
 loop:
-
 
 
     call i check_key
@@ -41,8 +31,11 @@ no_key:
 
 
 check_key:
+
+    ; debug here = correct setup
+
     mov ri r0, 1 ; check key syscall id
-    sys
+    sys ; somewhere here, 1) the stack is getting messed up, and 2) every register is being pushed 1 to the right
 
 
     cmp ri r0, 0
@@ -72,13 +65,18 @@ check_key:
     ret
     ;jmp i after_key
 
+
+
 all_keys:
     call i off_sys
     ret
 
+
+
+
 go_right:
     call i all_keys
-    add rm r1, 0x3803
+    add ri r1, multiplier
     ; jc i inc_r1
     ret
 
@@ -87,7 +85,7 @@ go_left:
     ; sub ri r2, 1
     ; jc i dec_r1
 
-    sub rm r1, 0x3803
+    sub ri r1, multiplier
 
     ret
 
@@ -103,7 +101,7 @@ off_sys:
 
 go_up:
     call i all_keys
-    sub rm r2, 0x3803
+    sub ri r2, multiplier
     ; jc i dec_r1
     ret
 
@@ -111,8 +109,7 @@ go_down:
 
     call i all_keys
 
-    add rm r2, 0x3803
-    ; jc i inc_r1
+    add ri r2, multiplier
     ret
 
 

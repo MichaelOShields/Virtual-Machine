@@ -4,8 +4,8 @@
 ; USER 0
 
 .org 0x1300          ; user 0 SP
+.byte 0x4F
 .byte 0xFF
-.byte 0xFE
 
 .org 0x1302          ; user 0 regs (r0–r7)
 .byte 0
@@ -23,7 +23,7 @@
 .byte 0
 .byte 0
 
-.org 0x130E          
+.org 0x130E
 ; user program 0 runnable state
 ; 
 ; 0 means "not runnable",
@@ -31,13 +31,21 @@
 ; 2 means "waiting (reasoning probably tracked in padding bytes below later)",
 ; 3 means "dead"/should be cleared when the kernel has some free time.
 ; (a daemon or something? like a queued task; think about this more)
-.byte 0
+.byte 1
 
 .org 0x130F          ; user 0 PC
 .byte 0x38
 .byte 0x00
 
 .org 0x1311          ; padding (8 bytes)
+
+; first byte is the waiting reason:
+; 0 means waiting for no reason (idk why it'd be like that),
+; 1 means waiting for any input,
+; 2 means waiting for keyboard (incl. number) input,
+; 3 means waiting for arrow input,
+; 4 means waiting for keyboard + arrow input
+
 .byte 0
 .byte 0
 .byte 0

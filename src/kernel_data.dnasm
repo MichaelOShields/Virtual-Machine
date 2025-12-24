@@ -1,6 +1,6 @@
 .org 0x1200
 ; 196 bytes of letters
-.const "space", 0
+; symbol: space
 .byte 0b00000_000
 .byte 0b00000_000
 .byte 0b00000_000
@@ -9,7 +9,7 @@
 .byte 0b00000_000
 .byte 0b00000_000
 
-.const "a", 1
+; symbol: a
 .byte 0b01110_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -18,7 +18,7 @@
 .byte 0b10001_000
 .byte 0b10001_000
 
-.const "b", 2
+; symbol: b
 .byte 0b11110_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -27,7 +27,7 @@
 .byte 0b10001_000
 .byte 0b11110_000
 
-.const "c", 3
+; symbol: c
 .byte 0b01110_000
 .byte 0b10001_000
 .byte 0b10000_000
@@ -36,8 +36,7 @@
 .byte 0b10001_000
 .byte 0b01110_000
 
-
-.const "d", 4
+; symbol: d
 .byte 0b11110_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -46,7 +45,7 @@
 .byte 0b10001_000
 .byte 0b11110_000
 
-.const "e", 5
+; symbol: e
 .byte 0b11111_000
 .byte 0b10000_000
 .byte 0b10000_000
@@ -55,7 +54,7 @@
 .byte 0b10000_000
 .byte 0b11111_000
 
-.const "f", 6
+; symbol: f
 .byte 0b11111_000
 .byte 0b10000_000
 .byte 0b10000_000
@@ -64,7 +63,7 @@
 .byte 0b10000_000
 .byte 0b10000_000
 
-.const "g", 7
+; symbol: g
 .byte 0b11111_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -73,7 +72,7 @@
 .byte 0b10001_000
 .byte 0b11111_000
 
-.const "h", 8
+; symbol: h
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -82,7 +81,7 @@
 .byte 0b10001_000
 .byte 0b10001_000
 
-
+; symbol: i
 .byte 0b11111_000
 .byte 0b00100_000
 .byte 0b00100_000
@@ -91,7 +90,7 @@
 .byte 0b00100_000
 .byte 0b11111_000
 
-.const "j", 10
+; symbol: j
 .byte 0b11111_000
 .byte 0b00100_000
 .byte 0b00100_000
@@ -100,7 +99,7 @@
 .byte 0b10100_000
 .byte 0b11100_000
 
-.const "k", 11
+; symbol: k
 .byte 0b10001_000
 .byte 0b10010_000
 .byte 0b10100_000
@@ -109,7 +108,7 @@
 .byte 0b10010_000
 .byte 0b10001_000
 
-.const "l", 12
+; symbol: l
 .byte 0b10000_000
 .byte 0b10000_000
 .byte 0b10000_000
@@ -118,7 +117,7 @@
 .byte 0b10000_000
 .byte 0b11111_000
 
-.const "m", 13
+; symbol: m
 .byte 0b10001_000
 .byte 0b11011_000
 .byte 0b10101_000
@@ -127,7 +126,7 @@
 .byte 0b10001_000
 .byte 0b10001_000
 
-.const "n", 14
+; symbol: n
 .byte 0b11001_000
 .byte 0b11001_000
 .byte 0b11001_000
@@ -136,7 +135,7 @@
 .byte 0b10011_000
 .byte 0b10011_000
 
-.const "o", 15
+; symbol: o
 .byte 0b11111_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -145,7 +144,7 @@
 .byte 0b10001_000
 .byte 0b11111_000
 
-.const "p", 16
+; symbol: p
 .byte 0b11111_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -154,7 +153,7 @@
 .byte 0b10000_000
 .byte 0b10000_000
 
-.const "q", 17
+; symbol: q
 .byte 0b11110_000
 .byte 0b10010_000
 .byte 0b10010_000
@@ -163,7 +162,7 @@
 .byte 0b11110_000
 .byte 0b00001_000
 
-.const "r", 18
+; symbol: r
 .byte 0b11111_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -172,7 +171,7 @@
 .byte 0b10100_000
 .byte 0b10010_000
 
-.const "s", 19
+; symbol: s
 .byte 0b11111_000
 .byte 0b10001_000
 .byte 0b10000_000
@@ -181,7 +180,7 @@
 .byte 0b10001_000
 .byte 0b11111_000
 
-.const "t", 20
+; symbol: t
 .byte 0b11111_000
 .byte 0b00100_000
 .byte 0b00100_000
@@ -190,7 +189,7 @@
 .byte 0b00100_000
 .byte 0b00100_000
 
-.const "u", 21
+; symbol: u
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -199,7 +198,7 @@
 .byte 0b10001_000
 .byte 0b11111_000
 
-.const "v", 22
+; symbol: v
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -208,7 +207,7 @@
 .byte 0b01010_000
 .byte 0b00100_000
 
-.const "w", 23
+; symbol: w
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b10001_000
@@ -217,7 +216,7 @@
 .byte 0b10101_000
 .byte 0b11111_000
 
-.const "x", 24
+; symbol: x
 .byte 0b10001_000
 .byte 0b11011_000
 .byte 0b01010_000
@@ -226,7 +225,7 @@
 .byte 0b11011_000
 .byte 0b10001_000
 
-.const "y", 25
+; symbol: y
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b01010_000
@@ -235,7 +234,7 @@
 .byte 0b00100_000
 .byte 0b00100_000
 
-.const "z", 26
+; symbol: z
 .byte 0b11111_000
 .byte 0b00001_000
 .byte 0b00010_000
@@ -244,7 +243,7 @@
 .byte 0b10000_000
 .byte 0b11111_000
 
-.const "caret", 27
+; symbol: caret
 .byte 0b10000_000
 .byte 0b10000_000
 .byte 0b10000_000
@@ -287,9 +286,9 @@
 
 
 
-; kernel mmio starts at 0x87FF
+; kernel mmio starts at 0x19FF
 
-.org 0x87FF
-; 0x87FF is the location of the key buffer
+.org 0x19FF
+; 0x19FF is the location of the key buffer
 .byte 0
 

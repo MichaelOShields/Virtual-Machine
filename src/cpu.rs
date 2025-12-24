@@ -81,7 +81,7 @@ impl Cpu {
             mode: CPUMode::K,
             access: Access::X,
             instruction_ctr: 0,
-            instruction_lim: 1000, // allow 50 instructions before returning control
+            instruction_lim: 50, // allow 50 instructions before returning control
             kernel_trap_address: trap_addr,
         }
     }
@@ -125,7 +125,6 @@ impl Cpu {
         self.sp += 1;
 
         let v = self.memget(self.sp, mem)?;
-        self.memset(self.sp, 0, mem)?;
 
         // match self.mode {
         //     CPUMode::K => self.ksp = self.sp,
@@ -1306,20 +1305,18 @@ impl Cpu {
 
 
         // println!("SP: {:?}", self.sp);
-        let p1 = ((0xFF00 & pos) >> 8) as u8;
-        let p2 = 0xFF & pos as u8;
+        let p1 = (pos >> 8) as u8;
+        let p2 = pos as u8;
 
         // panic!("p1: {:08b}\np2: {:08b}\npos:{:016b}", p1, p2, pos);
 
 
         self.push(p1, mem)?;
-        // println!("SP: {:?}", self.sp);
         self.push(p2, mem)?;
+        // println!("SP (from call): 0x{:0x}", self.sp);
 
 
         // print stack
-        
-        // println!("{:?}", mem.get_range(self.sp, self.sp + 5));
 
         Ok(self.op_j(mode, reg, mem)?)
     }
@@ -1330,8 +1327,6 @@ impl Cpu {
         let m1 = self.pop(mem)?;
 
         // println!("m{}", (m1 as u16) << 8 | (m2 as u16));
-        
-        self.access = Access::X;
 
 
         self.pc = (m1 as u16) << 8 | (m2 as u16);
@@ -1644,8 +1639,12 @@ impl Cpu {
 
 
     pub fn debug(&mut self, mem: &mut Bus) {
-        println!("SP: {}", self.sp);
-        println!("PC: {:0x}", self.pc);
+        println!("SP: 0x{:0x}", self.sp);
+        println!("Next 5 stack items: ");
+        for (i,  num) in mem.get_range(self.sp + 1, self.sp + 6).iter().enumerate() {
+            println!("{} (0x{:0x}): 0b{:08b}", i + 1, self.sp + i as u16, num);
+        }
+        println!("PC: 0x{:0x}", self.pc);
         println!("Mode: {:?}", self.mode);
         println!("Access: {:?}", self.access);
         println!("Instruction: {:08b}", mem.force_get(self.pc));
@@ -1706,7 +1705,7 @@ impl Cpu {
             };
             match self.push(pc1, mem)  {
                 Ok(()) => (),
-                Err(_e) => {println!("push failed"); return;}
+                Err(_e) => {panic!("push failed");}
             };
 
 
@@ -1828,9 +1827,10 @@ impl Cpu {
         let instruction2 = self.memgetcore(self.pc + 1, mem)?;
 
 
+
         let instruction: u16 =
-        (self.memgetcore(self.pc, mem)? as u16) << 8
-        | ((self.memgetcore(self.pc + 1, mem)? as u16));
+        (instruction1 as u16) << 8
+        | (instruction2 as u16);
 
         let opcode = get_bits_msb(instruction, 0, 5);
         let mode = get_bits_msb(instruction, 6, 9);

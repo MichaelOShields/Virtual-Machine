@@ -1302,7 +1302,7 @@ impl Assembler {
             instrs.push(instr1);
             instrs.push(instr2);
             instrs.append(&mut imm);
-            instrs.append(&mut cleanup); // add cleanup instructions at end
+            // instrs.append(&mut cleanup); // add cleanup instructions at end
         }
         else {
             return Err(AssemblerError { message: "Unable to parse DoubleOperation".to_string() });
@@ -1314,7 +1314,7 @@ impl Assembler {
     fn assemble_single_op(&mut self, op: Stmt) -> Result<Vec<u8>, AssemblerError> {
         let mut instrs: Vec<u8> = vec![];
         // let mut cleanup: Vec<u8> = vec![]; // for memory ops that require cleanup
-        println!("Single op: {:?}", op);
+        // println!("Single op: {:?}", op);
 
         if let Stmt::SingleOperation { opid, mode, operand, operand_length: operand_length1 } = op {
 
@@ -1327,7 +1327,7 @@ impl Assembler {
             let mut instr1: u8 = 0;
             instr1 |= self.opcode_from_opid(opid)? << 2;
             let modebinary = self.smode_convert(mode.clone())?;
-            println!("Modebinary: {:08b}", modebinary);
+            // println!("Modebinary: {:08b}", modebinary);
             let mode1: u8 = get_bits_lsb(modebinary as u16, 2, 3) as u8;
             let mode2: u8 = get_bits_lsb(modebinary as u16, 0, 1) as u8;
             instr1 |= mode1;
@@ -1433,9 +1433,9 @@ impl Assembler {
             instr2 |= reg1 << 3;
             instr2 |= reg2;
 
-            println!("instr1: {:08b}", instr1);
-            println!("instr2: {:08b}", instr2);
-            println!("imm: {:?}", imm);
+            // println!("instr1: {:08b}", instr1);
+            // println!("instr2: {:08b}", instr2);
+            // println!("imm: {:?}", imm);
 
 
 
@@ -1609,7 +1609,7 @@ impl Assembler {
 
 
         for stmt in program {
-            println!("Stmt: {:?}", stmt);
+            // println!("Stmt: {:?}", stmt);
             let next_instructions: Vec<u8> = match stmt {
                 Stmt::DoubleOperation { opid, mode, dest, src, operand_length } => self.assemble_double_op(Stmt::DoubleOperation { opid, mode, dest, src, operand_length })?,
                 Stmt::SingleOperation { opid, mode, operand, operand_length } => self.assemble_single_op(Stmt::SingleOperation { opid, mode, operand, operand_length })?,
@@ -1622,11 +1622,11 @@ impl Assembler {
                 _ => return Err(AssemblerError { message: "Unexpected stmt".to_string() }),
             };
             if !next_instructions.is_empty() {
-                println!("Next instructions:");
+                // println!("Next instructions:");
                 for inst in next_instructions.clone() {
-                    print!("(0x{:x}): 0b{:08b},\n", self.current_pos, inst);
+                    // print!("(0x{:x}): 0b{:08b},\n", self.current_pos, inst);
                 }
-                print!("\n");
+                // print!("\n");
                 self.inc_pc(next_instructions.len() as u16);
                 if self.mode == AssembleMode::Assemble {
                     byte_segments.entry(self.current_pos).or_insert_with(||Vec::new()).extend(next_instructions);
@@ -1634,18 +1634,18 @@ impl Assembler {
                 
             }
             else {
-                println!("Empty instructions");
+                // println!("Empty instructions");
             }
         }
 
         print!("\nLabels:");
         for (labels, labelu) in self.labels.clone() {
-            print!("\n[\"{}\": {:0x}]", labels, labelu);
+            print!("\n[\"{}\": 0x{:0x}]", labels, labelu);
         }
         print!("\n");
         print!("\nConsts:");
         for (labels, labelu) in self.consts.clone() {
-            print!("\n[\"{}\": {:08b}]", labels, labelu);
+            print!("\n[\"{}\": 0b{:08b}]", labels, labelu);
         }
         print!("\n");
         

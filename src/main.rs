@@ -143,7 +143,7 @@ impl ApplicationHandler for App {
             },
 
             WindowEvent::RedrawRequested => {
-                self.vm.step_many(200);
+                self.vm.step_many(100);
                 if !self.vm.cpu.halted {
                     // self.vm.cpu.status();
                     // self.vm.mem.status();
@@ -287,7 +287,7 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
 
 
 fn main() {
-    
+
     let keyb = Keyboard::new();
     let ms = Mouse::new();
     
@@ -413,6 +413,8 @@ fn main() {
     load_assembly(&mut memory, "src\\kernel".to_string());
 
     load_assembly(&mut memory, "src\\kernel_data".to_string());
+
+    load_assembly(&mut memory, "src\\kerheap".to_string());
 
     load_assembly(&mut memory, "src\\program_handling".to_string());
 
