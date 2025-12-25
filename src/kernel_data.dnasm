@@ -136,13 +136,13 @@
 .byte 0b10011_000
 
 ; symbol: o
-.byte 0b11111_000
+.byte 0b01110_000
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b10001_000
 .byte 0b10001_000
-.byte 0b11111_000
+.byte 0b01110_000
 
 ; symbol: p
 .byte 0b11111_000
@@ -244,13 +244,13 @@
 .byte 0b11111_000
 
 ; symbol: caret
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
+.byte 0b11111_000
+.byte 0b11111_000
+.byte 0b11111_000
+.byte 0b11111_000
+.byte 0b11111_000
+.byte 0b11111_000
+.byte 0b11111_000
 
 ; ends @ 0x12C3
 

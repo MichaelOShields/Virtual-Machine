@@ -25,6 +25,7 @@ loop_full_row:
 starting:
     mov ri r1, 1
     mov ri r2, 1
+    call i caret
     jmp i loop
 
 loop:
@@ -75,6 +76,7 @@ go_forward:
     add ri r1, 8
     cmp ri r1, 121
     jg i backspace
+    call i caret
     ret
 
 
@@ -92,6 +94,7 @@ write_letter:
     sys
 
     call i go_forward
+
     ret
     
 
@@ -106,13 +109,44 @@ space:
 
     ret
 
-backspace:
 
-    call i go_backward
-    
+
+empty_current_letter:
     mov ri r3, 0 ; space
 
     mov ri r0, 4
     sys
+
+    ; call i go_forward
+
+    ret
+
+
+
+caret:
+    
+    mov ri r3, 27 ; space
+
+    mov ri r0, 4
+    sys
+
+    ; call i go_forward
+    ret
+
+
+backspace:
+
+    call i empty_current_letter
+
+    call i go_backward
+
+    call i caret
+    
+    ; mov ri r3, 0 ; space
+
+    ; mov ri r0, 4
+    ; sys
+
+    ; call i go_backward
 
     ret
