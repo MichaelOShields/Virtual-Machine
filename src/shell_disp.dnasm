@@ -11,6 +11,9 @@
 mov ri r1, 1
 mov ri r2, 9
 
+mov ri r6, hi(0x5800)
+mov ri r7, lo(0x5800) ; current pos in typing buffer
+
 loop_full_row:
     cmp ri r1, 129
     jz i starting
@@ -32,9 +35,6 @@ loop:
 
     mov ri r0, 5
     sys
-    
-    dbg r r1
-    dbg r r2
 
     call i check_key
 
@@ -51,6 +51,9 @@ check_key:
 
     mov ri r0, 1 ; check key syscall id
     sys
+
+    cmp ri r0, 51
+    jz i enter
 
     cmp ri r0, 50
     jz i backspace
@@ -73,6 +76,9 @@ check_key:
     ret
 
 go_forward:
+
+    add ri r7, 1
+
     add ri r1, 8
     cmp ri r1, 121
     jg i backspace
@@ -81,12 +87,17 @@ go_forward:
 
 
 go_backward:
+
+    sub ri r7, 1
+
     sub ri r1, 8
     cmp ri r1, 128
     jg i go_forward
     ret
 
 write_letter:
+
+    call i all_chars
     
     mov rr r3, r0
 
@@ -99,6 +110,8 @@ write_letter:
     
 
 space:
+
+    call i all_chars
     
     mov ri r3, 0 ; space
 
@@ -113,6 +126,7 @@ space:
 
 empty_current_letter:
     mov ri r3, 0 ; space
+
 
     mov ri r0, 4
     sys
@@ -150,3 +164,70 @@ backspace:
     ; call i go_backward
 
     ret
+
+all_chars:
+    mov mr r6, r3
+    ret
+
+enter:
+
+    ; handle command
+    ; example command: shutdown ("sd" for short because I don't want to write the entire thing)
+    mov ri r5, symbol_s
+    cmp mr 0x5800, r5
+    jz i starts_s
+    
+    ; if it doesn't start with s, move on:
+
+    ret
+
+starts_s:
+    mov ri r5, symbol_d
+    cmp mr 0x5801, r5
+    jz i shutdown
+    ret
+
+
+shutdown:
+    hlt
+    ret
+
+
+
+; consts:
+.const "symbol_space", 0
+
+.const "symbol_a", 1
+.const "symbol_b", 2
+.const "symbol_c", 3
+.const "symbol_d", 4
+.const "symbol_e", 5
+.const "symbol_f", 6
+.const "symbol_g", 7
+.const "symbol_h", 8
+.const "symbol_i", 9
+.const "symbol_j", 10
+.const "symbol_k", 11
+.const "symbol_l", 12
+.const "symbol_m", 13
+.const "symbol_n", 14
+.const "symbol_o", 15
+.const "symbol_p", 16
+.const "symbol_q", 17
+.const "symbol_r", 18
+.const "symbol_s", 19
+.const "symbol_t", 20
+.const "symbol_u", 21
+.const "symbol_v", 22
+.const "symbol_w", 23
+.const "symbol_x", 24
+.const "symbol_y", 25
+.const "symbol_z", 26
+
+.const "symbol_caret", 27
+
+
+
+
+.org 0x5800 ; 0x5800-0x580F are reserved for the typing buffer (only 15 letters fit on the screen, so that's the max)
+.byte 0
