@@ -1,257 +1,257 @@
 .org 0x1200
-; 196 bytes of letters
-; symbol: space
-.byte 0b00000_000
-.byte 0b00000_000
-.byte 0b00000_000
-.byte 0b00000_000
-.byte 0b00000_000
-.byte 0b00000_000
-.byte 0b00000_000
+letters:
+    ; 196 bytes of letters
+    ; symbol: space
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
+    .byte 0b00000_000
 
-; symbol: a
-.byte 0b01110_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11111_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
+    ; symbol: a
+    .byte 0b01110_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
 
-; symbol: b
-.byte 0b11110_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11110_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11110_000
+    ; symbol: b
+    .byte 0b11110_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11110_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11110_000
 
-; symbol: c
-.byte 0b01110_000
-.byte 0b10001_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10001_000
-.byte 0b01110_000
+    ; symbol: c
+    .byte 0b01110_000
+    .byte 0b10001_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10001_000
+    .byte 0b01110_000
 
-; symbol: d
-.byte 0b11110_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11110_000
+    ; symbol: d
+    .byte 0b11110_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11110_000
 
-; symbol: e
-.byte 0b11111_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b11111_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b11111_000
+    ; symbol: e
+    .byte 0b11111_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
 
-; symbol: f
-.byte 0b11111_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b11111_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
+    ; symbol: f
+    .byte 0b11111_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
 
-; symbol: g
-.byte 0b11111_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10000_000
-.byte 0b10111_000
-.byte 0b10001_000
-.byte 0b11111_000
+    ; symbol: g
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10000_000
+    .byte 0b10111_000
+    .byte 0b10001_000
+    .byte 0b11111_000
 
-; symbol: h
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11111_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
+    ; symbol: h
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
 
-; symbol: i
-.byte 0b11111_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b11111_000
+    ; symbol: i
+    .byte 0b11111_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b11111_000
 
-; symbol: j
-.byte 0b11111_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b10100_000
-.byte 0b10100_000
-.byte 0b11100_000
+    ; symbol: j
+    .byte 0b11111_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b10100_000
+    .byte 0b10100_000
+    .byte 0b11100_000
 
-; symbol: k
-.byte 0b10001_000
-.byte 0b10010_000
-.byte 0b10100_000
-.byte 0b11000_000
-.byte 0b10100_000
-.byte 0b10010_000
-.byte 0b10001_000
+    ; symbol: k
+    .byte 0b10001_000
+    .byte 0b10010_000
+    .byte 0b10100_000
+    .byte 0b11000_000
+    .byte 0b10100_000
+    .byte 0b10010_000
+    .byte 0b10001_000
 
-; symbol: l
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b11111_000
+    ; symbol: l
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
 
-; symbol: m
-.byte 0b10001_000
-.byte 0b11011_000
-.byte 0b10101_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
+    ; symbol: m
+    .byte 0b10001_000
+    .byte 0b11011_000
+    .byte 0b10101_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
 
-; symbol: n
-.byte 0b11001_000
-.byte 0b11001_000
-.byte 0b11001_000
-.byte 0b10101_000
-.byte 0b10011_000
-.byte 0b10011_000
-.byte 0b10011_000
+    ; symbol: n
+    .byte 0b11001_000
+    .byte 0b11001_000
+    .byte 0b11001_000
+    .byte 0b10101_000
+    .byte 0b10011_000
+    .byte 0b10011_000
+    .byte 0b10011_000
 
-; symbol: o
-.byte 0b01110_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b01110_000
+    ; symbol: o
+    .byte 0b01110_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b01110_000
 
-; symbol: p
-.byte 0b11111_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11111_000
-.byte 0b10000_000
-.byte 0b10000_000
-.byte 0b10000_000
+    ; symbol: p
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
 
-; symbol: q
-.byte 0b11110_000
-.byte 0b10010_000
-.byte 0b10010_000
-.byte 0b10010_000
-.byte 0b10010_000
-.byte 0b11110_000
-.byte 0b00001_000
+    ; symbol: q
+    .byte 0b11110_000
+    .byte 0b10010_000
+    .byte 0b10010_000
+    .byte 0b10010_000
+    .byte 0b10010_000
+    .byte 0b11110_000
+    .byte 0b00001_000
 
-; symbol: r
-.byte 0b11111_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11111_000
-.byte 0b11000_000
-.byte 0b10100_000
-.byte 0b10010_000
+    ; symbol: r
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
+    .byte 0b11000_000
+    .byte 0b10100_000
+    .byte 0b10010_000
 
-; symbol: s
-.byte 0b11111_000
-.byte 0b10001_000
-.byte 0b10000_000
-.byte 0b11111_000
-.byte 0b00001_000
-.byte 0b10001_000
-.byte 0b11111_000
+    ; symbol: s
+    .byte 0b11111_000
+    .byte 0b10001_000
+    .byte 0b10000_000
+    .byte 0b11111_000
+    .byte 0b00001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
 
-; symbol: t
-.byte 0b11111_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
+    ; symbol: t
+    .byte 0b11111_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
 
-; symbol: u
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b11111_000
+    ; symbol: u
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b11111_000
 
-; symbol: v
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b01010_000
-.byte 0b01010_000
-.byte 0b00100_000
+    ; symbol: v
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b01010_000
+    .byte 0b01010_000
+    .byte 0b00100_000
 
-; symbol: w
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b10101_000
-.byte 0b10101_000
-.byte 0b10101_000
-.byte 0b11111_000
+    ; symbol: w
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b10101_000
+    .byte 0b10101_000
+    .byte 0b10101_000
+    .byte 0b11111_000
 
-; symbol: x
-.byte 0b10001_000
-.byte 0b11011_000
-.byte 0b01010_000
-.byte 0b00100_000
-.byte 0b01110_000
-.byte 0b11011_000
-.byte 0b10001_000
+    ; symbol: x
+    .byte 0b10001_000
+    .byte 0b11011_000
+    .byte 0b01010_000
+    .byte 0b00100_000
+    .byte 0b01110_000
+    .byte 0b11011_000
+    .byte 0b10001_000
 
-; symbol: y
-.byte 0b10001_000
-.byte 0b10001_000
-.byte 0b01010_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
-.byte 0b00100_000
+    ; symbol: y
+    .byte 0b10001_000
+    .byte 0b10001_000
+    .byte 0b01010_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
+    .byte 0b00100_000
 
-; symbol: z
-.byte 0b11111_000
-.byte 0b00001_000
-.byte 0b00010_000
-.byte 0b00100_000
-.byte 0b01000_000
-.byte 0b10000_000
-.byte 0b11111_000
+    ; symbol: z
+    .byte 0b11111_000
+    .byte 0b00001_000
+    .byte 0b00010_000
+    .byte 0b00100_000
+    .byte 0b01000_000
+    .byte 0b10000_000
+    .byte 0b11111_000
 
-; symbol: caret
-.byte 0b11111_000
-.byte 0b11111_000
-.byte 0b11111_000
-.byte 0b11111_000
-.byte 0b11111_000
-.byte 0b11111_000
-.byte 0b11111_000
-
+    ; symbol: caret
+    .byte 0b11111_000
+    .byte 0b11111_000
+    .byte 0b11111_000
+    .byte 0b11111_000
+    .byte 0b11111_000
+    .byte 0b11111_000
+    .byte 0b11111_000
 ; ends @ 0x12C3
 
 
@@ -277,6 +277,53 @@
 
 
 ; kernel mmio starts at 0x17FF
+
+.const "symbol_space", 0
+
+.const "symbol_a", 1
+.const "symbol_b", 2
+.const "symbol_c", 3
+.const "symbol_d", 4
+.const "symbol_e", 5
+.const "symbol_f", 6
+.const "symbol_g", 7
+.const "symbol_h", 8
+.const "symbol_i", 9
+.const "symbol_j", 10
+.const "symbol_k", 11
+.const "symbol_l", 12
+.const "symbol_m", 13
+.const "symbol_n", 14
+.const "symbol_o", 15
+.const "symbol_p", 16
+.const "symbol_q", 17
+.const "symbol_r", 18
+.const "symbol_s", 19
+.const "symbol_t", 20
+.const "symbol_u", 21
+.const "symbol_v", 22
+.const "symbol_w", 23
+.const "symbol_x", 24
+.const "symbol_y", 25
+.const "symbol_z", 26
+
+.const "symbol_caret", 27
+
+; commands start at 0x1600
+.org 0x1600 ; shutdown
+.str "shutdown"
+
+.org 0x1609 ; panic
+.str "panic"
+
+.org 0x160E ; spawn
+.str "spawn"
+
+.org 0x1613 ; kill
+.str "kill"
+
+
+
 
 .org 0x17FF
 ; 0x19FF is the location of the key buffer

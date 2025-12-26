@@ -1181,111 +1181,16 @@ impl Cpu {
         Ok(self.op_js(mode, reg, mem)?)
     }
 
-
     fn op_cmp(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
-        match mode {
-            0b0000_u16 => {
-                // r2 to r1
-                // dest src
-                
-                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = (*r1).clone();
-                let b = r2;
-
-                let (result, borrow) = a.overflowing_sub(b);
-
-                self.signs_sub(a, b, result, borrow);
-
-                self.increment_pc(2); // increment by # of bytes in instruction
-            },
-            0b0001_u16 => {
-                // m2 to r1
-
-                // mem loc stored as r0:r1 or r1:r2 etc
-                let m21 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-                let m22 = self.regs[(get_bits_lsb(reg, 0, 2) + 1) as usize];
-
-                let m2: u16 = (m21 as u16) << 8 | (m22 as u16); // memory address
-
-                let b = self.memget(m2, mem)?;
-
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = (*r1).clone();
-
-                let (result, borrow) = a.overflowing_sub(b);
-
-                self.signs_sub(a, b, result, borrow);
-                
-                self.increment_pc(2);
-
-            },
-            0b0010_u16 => {
-                // r2 to m1
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize]; // so will add 1 to reg
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1: u16 = (m11 as u16) << 8 | (m12 as u16); // memory address
-                let r2 = self.regs[get_bits_lsb(reg, 0, 2) as usize];
-
-                let a = self.memget(m1, mem)?;
-                let b = r2;
-
-                let (result, borrow) = a.overflowing_sub(b);
-
-                self.signs_sub(a,b, result, borrow);
-                
-                self.increment_pc(2);
-
-            },
-            0b0011_u16 => {
-                // i2 to r1
-                // dest src
-
-                let i2 = self.get_operand(mem)?;
-                // println!("r1: {:016b}", self.regs[get_bits_lsb(reg, 3, 5) as usize]);
-                let r1 = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
-
-                let a = *r1;
-                let b = i2;
-
-                let (result, borrow) = (a).overflowing_sub(b);
-                
-                
-                self.signs_sub(a, b, result, borrow);
-
-
-
-                self.increment_pc(3); // uses operand -> 3 bytes
-            },
-            0b0100_u16 => {
-                // i2 to m1
-                // dest src
-
-                let i2 = self.get_operand(mem)?;
-                let m11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
-                let m12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
-
-                let m1 = (m11 as u16) << 8 | (m12 as u16);
-
-                let m1val: u8 = self.memget(m1, mem)?;
-
-                let a = m1val;
-                let b = i2;
-
-                let (result, borrow) = a.overflowing_sub(b);
-
-                self.signs_sub(a, b, result, borrow);
-
-                self.increment_pc(3);
-
-            },
-            _ => {println!("Not accounted-for mode"); println!("pc: {:0x}", self.pc);},
-        }
+        let DoubleVal { a, b} = self.double_val(mode, reg, mem)?;
+        let (result, borrow) = (*a).overflowing_sub(b);
+        // *a = result;
+        let aclone = (*a).clone();
+        self.signs_sub(aclone, b, result, borrow);
         Ok(())
     }
+
+
 
     fn op_push(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         let val: u8 = self.single_val(mode, reg, mem)?;    
@@ -1635,6 +1540,12 @@ impl Cpu {
         println!("Debug num: {}", val);
         Ok(())
     }
+
+    fn op_sdb(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+        let val = self.single_val(mode, reg, mem)?;
+        println!("Debug num: {}", val);
+        Ok(())
+    }
     
 
 
@@ -1893,6 +1804,7 @@ impl Cpu {
             0b100_010_u16 => {self.op_shrw(mode, reg, mem)?; }, // shift right wrap
             0b100_011_u16 => {self.op_gfls(mode, reg, mem)?; }, // get flags
             0b100_100_u16 => {self.op_sfls(mode, reg, mem)?; }, // set flags
+            0b100_101_u16 => {self.op_sdb(mode, reg, mem)?; }, // SIMPLE DEBUG
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

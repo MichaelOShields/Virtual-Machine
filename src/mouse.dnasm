@@ -31,9 +31,6 @@ loop:
 ; functions:
 
 
-no_key:
-    ret
-
 
 check_key:
 
@@ -41,13 +38,10 @@ check_key:
     mov ri r0, 1 ; check key syscall id
     sys
 
-
-    cmp ri r0, 0
-    jz i no_key
+    sdb r r0
 
 
     cmp ri r0, 27
-    ; jl i write_letter
     jz i go_up
     cmp ri r0, 28
     jz i go_down
@@ -55,8 +49,6 @@ check_key:
     jz i go_left
     cmp ri r0, 30
     jz i go_right
-
-    jmp i no_key
 
     ret
     ;jmp i after_key
@@ -107,7 +99,7 @@ go_up:
     call i all_keys
     sub ri r2, multiplier
 
-    cmp ri r2, 11 ; if we go below 0, it wraps around to 255, so should check above 128
+    cmp ri r2, 21 ; if we go below 0, it wraps around to 255, so should check above 128
     jl i lower_bound_y
 
     ret
@@ -125,7 +117,7 @@ go_down:
     ret
 
 lower_bound_y:
-    mov ri r2, 12
+    mov ri r2, 21
     ret
 
 upper_bound_y:

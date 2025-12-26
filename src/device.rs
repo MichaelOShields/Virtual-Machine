@@ -57,7 +57,7 @@ impl Keyboard {
     }
 
     pub fn inject_key(&mut self, key: u8) {
-        if self.queue.len() < 1 {
+        if self.queue.len() == 0 {
             self.queue.push_back(key);
         }
     }
@@ -65,7 +65,7 @@ impl Keyboard {
     pub fn status(&mut self) -> u8 {
         let mut status: u8 = 0b0000_0000;
         if self.queue.len() > 0 {
-            status = status | 0b0000_0001;
+            status = 0b0000_0001;
         }
 
         // println!("Status: {:08b}", status);

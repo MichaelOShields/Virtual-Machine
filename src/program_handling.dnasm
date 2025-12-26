@@ -33,11 +33,14 @@
 ; (a daemon or something? like a queued task; think about this more)
 .byte 1
 
+
+
+
 .org 0x130F          ; user 0 PC
 .byte 0x38
 .byte 0x00
 
-.org 0x1311          ; padding (8 bytes)
+.org 0x1311
 
 ; first byte is the waiting reason:
 ; 0 means waiting for no reason (idk why it'd be like that, might want to make it like a safe exit/pause or smth later),
@@ -50,7 +53,10 @@
 .byte 0
 
 
-.byte 0 ; program permission lvl?
+.org 0x1312
+; program ring: 0 means kernel (can do anything), 1 means trusted application (generally loaded on image, think mouse or shell), 2 means user application
+.byte 1
+
 .byte 0
 .byte 0
 .byte 0
@@ -90,7 +96,7 @@
 
 .org 0x132A
 .byte 0
-.byte 0
+.byte 1
 .byte 0
 .byte 0
 .byte 0
@@ -131,7 +137,7 @@
 
 .org 0x1343
 .byte 0
-.byte 0
+.byte 2
 .byte 0
 .byte 0
 .byte 0
@@ -172,7 +178,7 @@
 
 .org 0x135C
 .byte 0
-.byte 0
+.byte 2
 .byte 0
 .byte 0
 .byte 0
@@ -213,7 +219,7 @@
 
 .org 0x1375
 .byte 0
-.byte 0
+.byte 2
 .byte 0
 .byte 0
 .byte 0
@@ -254,7 +260,7 @@
 
 .org 0x138E
 .byte 0
-.byte 0
+.byte 2
 .byte 0
 .byte 0
 .byte 0
@@ -295,7 +301,7 @@
 
 .org 0x13A7
 .byte 0
-.byte 0
+.byte 2
 .byte 0
 .byte 0
 .byte 0
@@ -336,7 +342,7 @@
 
 .org 0x13C0
 .byte 0
-.byte 0
+.byte 2
 .byte 0
 .byte 0
 .byte 0

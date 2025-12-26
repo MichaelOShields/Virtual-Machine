@@ -968,10 +968,19 @@ get_key:
 ;
 
 
-apoptosis: ; "progammed cell death" just kill the program
-    dbg i 69
-    hlt
-    pnk
+apoptosis:
+
+    mov ri r1, hi(0x130E)
+    mov ri r2, lo(0x130E)
+    mov ri r0, 0x12C8
+    mul ri r0, 0x19
+
+    add rr r2, r0
+
+    mov ri r4, 0 ; later will set to 3, which indicates it should be cleanly disposed of by the kernel
+    mov mr r1, r4
+
+    jmp i kernel
 
 
 

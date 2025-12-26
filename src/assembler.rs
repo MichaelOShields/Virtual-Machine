@@ -543,6 +543,7 @@ impl Parser {
         ops.insert("pop".to_string(),  (OpKind::Single, OperandLength::Unsigned8));
 
         ops.insert("dbg".to_string(), (OpKind::Single, OperandLength::Unsigned8));
+        ops.insert("sdb".to_string(), (OpKind::Single, OperandLength::Unsigned8));
 
         
         ops.insert("shl".to_string(), (OpKind::Single, OperandLength::Unsigned8));
@@ -956,18 +957,50 @@ pub struct Assembler {
     output: Vec<u8>,
     labels: HashMap<String, u16>,
     consts: HashMap<String, u8>,
+    symbols: HashMap<char, u8>,
     program: Vec<Stmt>,
     mode: AssembleMode,
 }
 
 impl Assembler {
     pub fn new(program: Vec<Stmt>) -> Self {
+        let symbols: HashMap<char, u8> = HashMap::from([
+            (' ', 0),
+            ('a', 1),
+            ('b', 2),
+            ('c', 3),
+            ('d', 4),
+            ('e', 5),
+            ('f', 6),
+            ('g', 7),
+            ('h', 8),
+            ('i', 9),
+            ('j', 10),
+            ('k', 11),
+            ('l', 12),
+            ('m', 13),
+            ('n', 14),
+            ('o', 15),
+            ('p', 16),
+            ('q', 17),
+            ('r', 18),
+            ('s', 19),
+            ('t', 20),
+            ('u', 21),
+            ('v', 22),
+            ('w', 23),
+            ('x', 24),
+            ('y', 25),
+            ('z', 26),
+        ]);
+        
         Self {
             pc: 0_u16,
             current_pos: 0_u16,
             output: vec![],
             labels: HashMap::new(),
             consts: HashMap::new(),
+            symbols,
             program,
             mode: AssembleMode::CountBytes,
         }
@@ -1012,6 +1045,7 @@ impl Assembler {
             "shrw" => 0b100_010,
             "gfls" => 0b100_011,
             "sfls" => 0b100_100,
+            "sdb" => 0b100_101,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });
@@ -1459,7 +1493,7 @@ impl Assembler {
         return Ok(match self.labels.get(label) {
             Some(u) => *u,
             None => match self.mode {
-                AssembleMode::Assemble => return Err(AssemblerError { message: "Attempted to get nonexistent label".to_string() }),
+                AssembleMode::Assemble => return Err(AssemblerError { message: format!("Attempted to get nonexistent label {:?}", label) }),
                 AssembleMode::CountBytes => 0,
             }
         });
@@ -1469,7 +1503,7 @@ impl Assembler {
         return Ok(match self.consts.get(label) {
             Some(u) => *u,
             None => match self.mode {
-                AssembleMode::Assemble => return Err(AssemblerError { message: "Attempted to get nonexistent const".to_string() }),
+                AssembleMode::Assemble => return Err(AssemblerError { message: format!("Attempted to get nonexistent const {:?}", label) }),
                 AssembleMode::CountBytes => 0,
             }
         });
@@ -1520,7 +1554,13 @@ impl Assembler {
             Expr::Str(_) => return Err(AssemblerError { message: "Couldn't turn string into one i64.".to_string() }),
             Expr::Num(n) => match n {
                 NumExpr::Raw(i) => i,
-                NumExpr::Reference(r) => self.get_label(r.as_str())? as i64,
+                NumExpr::Reference(r) => match self.get_label(r.as_str()) {
+                    Ok(l) => l as i64,
+                    Err(e) => match self.get_const(r.as_str()) {
+                        Ok(c) => c as i64,
+                        Err(e) => return Err(e),
+                    },
+                },
                 NumExpr::Function(f) => self.eval_func(*f)?,
                 NumExpr::BinaryOperation { a, operand, b } => self.eval_num_bin_op(*a, operand, *b)?,
             },
@@ -1532,7 +1572,7 @@ impl Assembler {
     fn parse_signal(&mut self, name: String, args: Vec<Expr>) -> Result<Vec<u8>, AssemblerError> {
         let mut returner: Vec<u8> = vec![];
         if name == "org" {
-            if args.is_empty() || args.len() > 1 {
+            if args.len() != 1 {
                 return Err(AssemblerError { message: "org signal arg count incorrect".to_string() });
             }
             else {
@@ -1550,6 +1590,25 @@ impl Assembler {
                 };
                 self.pc = new_pos;
                 self.current_pos = new_pos;
+            }
+        }
+        else if name == "str" {
+            if args.len() != 1 {
+                return Err(AssemblerError { message: "str signal arg count incorrect".to_string() });
+            }
+            else {
+                match &args[0] {
+                    Expr::Str(StrExpr::Raw(s)) => {
+                        for c in s.chars() {
+                            match self.symbols.get(&c) {
+                                Some(v) => returner.push(*v),
+                                None => returner.push(0),
+                            };
+                        }
+                    },
+                    _ => return Err(AssemblerError { message: "str signal received incorrect arg".to_string() })
+                };
+                
             }
         }
         else if name == "byte" {

@@ -9,7 +9,7 @@
 
 ; start:
 mov ri r1, 1
-mov ri r2, 9
+mov ri r2, 19
 
 mov ri r6, hi(0x5800)
 mov ri r7, lo(0x5800) ; current pos in typing buffer
@@ -33,7 +33,7 @@ starting:
 
 loop:
 
-    mov ri r0, 5
+    mov ri r0, 5 ; waiting for input
     sys
 
     call i check_key
@@ -60,18 +60,10 @@ check_key:
 
     cmp ri r0, 53
     jz i space
-    
-
-
-    cmp ri r0, 0
-    jz i no_key
 
     cmp ri r0, 26
     jl i write_letter
     jz i write_letter
-    jg i no_key
-
-
 
     ret
 
@@ -166,7 +158,7 @@ backspace:
     ret
 
 all_chars:
-    mov mr r6, r3
+    mov mr r6, r0
     ret
 
 enter:
