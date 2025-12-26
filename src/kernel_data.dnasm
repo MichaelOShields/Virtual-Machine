@@ -1,4 +1,75 @@
-.org 0x1200
+; commands start at 0x1200
+.org 0x1200 ; shutdown
+.str "shutdown"
+
+.org 0x1209 ; panic
+.str "panic"
+
+.org 0x120E ; spawn
+.str "spawn"
+
+.org 0x1213 ; kill
+.str "kill"
+
+
+; kernel info: @0x12C5
+
+.org 0x12C5
+
+; kernel SP: (formerly 1250)
+
+.byte 0x23
+.byte 0xFF
+
+
+.org 0x12C7 ; exit info (formerly 125A)
+.byte 0 ; reason
+
+
+
+.org 0x12C8 ; task admin resources (formerly 1260)
+.byte 0 ; CURRENT TASK INDEX
+
+
+
+
+; kernel mmio starts at 0x17FF
+
+.const "symbol_space", 0
+
+.const "symbol_a", 1
+.const "symbol_b", 2
+.const "symbol_c", 3
+.const "symbol_d", 4
+.const "symbol_e", 5
+.const "symbol_f", 6
+.const "symbol_g", 7
+.const "symbol_h", 8
+.const "symbol_i", 9
+.const "symbol_j", 10
+.const "symbol_k", 11
+.const "symbol_l", 12
+.const "symbol_m", 13
+.const "symbol_n", 14
+.const "symbol_o", 15
+.const "symbol_p", 16
+.const "symbol_q", 17
+.const "symbol_r", 18
+.const "symbol_s", 19
+.const "symbol_t", 20
+.const "symbol_u", 21
+.const "symbol_v", 22
+.const "symbol_w", 23
+.const "symbol_x", 24
+.const "symbol_y", 25
+.const "symbol_z", 26
+
+.const "symbol_caret", 27
+.const "symbol_endcaret", 28
+
+
+
+.org 0x1600
 letters:
     ; 196 bytes of letters
     ; symbol: space
@@ -245,83 +316,49 @@ letters:
     .byte 0b11111_000
 
     ; symbol: caret
-    .byte 0b11111_000
-    .byte 0b11111_000
-    .byte 0b11111_000
-    .byte 0b11111_000
-    .byte 0b11111_000
-    .byte 0b11111_000
-    .byte 0b11111_000
-; ends @ 0x12C3
 
+    ; .byte 0b11111_000
+    ; .byte 0b11111_000
+    ; .byte 0b11111_000
+    ; .byte 0b11111_000
+    ; .byte 0b11111_000
+    ; .byte 0b11111_000
+    ; .byte 0b11111_000
 
-; kernel info: @0x12C5
+    ; .byte 0b11111_000
+    ; .byte 0b10001_000
+    ; .byte 0b10001_000
+    ; .byte 0b10001_000
+    ; .byte 0b10001_000
+    ; .byte 0b10001_000
+    ; .byte 0b11111_000
 
-.org 0x12C5
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
+    .byte 0b10000_000
 
-; kernel SP: (formerly 1250)
+    ; symbol: end-caret
 
-.byte 0x23
-.byte 0xFF
+    .byte 0b00000_001
+    .byte 0b00000_001
+    .byte 0b00000_001
+    .byte 0b00000_001
+    .byte 0b00000_001
+    .byte 0b00000_001
+    .byte 0b00000_001
 
-
-.org 0x12C7 ; exit info (formerly 125A)
-.byte 0 ; reason
-
-
-
-.org 0x12C8 ; task admin resources (formerly 1260)
-.byte 0 ; CURRENT TASK INDEX
-
-
-
-
-; kernel mmio starts at 0x17FF
-
-.const "symbol_space", 0
-
-.const "symbol_a", 1
-.const "symbol_b", 2
-.const "symbol_c", 3
-.const "symbol_d", 4
-.const "symbol_e", 5
-.const "symbol_f", 6
-.const "symbol_g", 7
-.const "symbol_h", 8
-.const "symbol_i", 9
-.const "symbol_j", 10
-.const "symbol_k", 11
-.const "symbol_l", 12
-.const "symbol_m", 13
-.const "symbol_n", 14
-.const "symbol_o", 15
-.const "symbol_p", 16
-.const "symbol_q", 17
-.const "symbol_r", 18
-.const "symbol_s", 19
-.const "symbol_t", 20
-.const "symbol_u", 21
-.const "symbol_v", 22
-.const "symbol_w", 23
-.const "symbol_x", 24
-.const "symbol_y", 25
-.const "symbol_z", 26
-
-.const "symbol_caret", 27
-
-; commands start at 0x1600
-.org 0x1600 ; shutdown
-.str "shutdown"
-
-.org 0x1609 ; panic
-.str "panic"
-
-.org 0x160E ; spawn
-.str "spawn"
-
-.org 0x1613 ; kill
-.str "kill"
-
+    ; .byte 0b00001_000
+    ; .byte 0b00001_000
+    ; .byte 0b00001_000
+    ; .byte 0b00001_000
+    ; .byte 0b00001_000
+    ; .byte 0b00001_000
+    ; .byte 0b00001_000
+;
 
 
 

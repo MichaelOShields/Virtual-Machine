@@ -79,7 +79,7 @@ go_right:
     call i all_keys
     add ri r1, multiplier
     
-    cmp ri r1, 127
+    cmp ri r1, 128
     jg i upper_bound_x
     ret
 
@@ -129,12 +129,5 @@ lower_bound_x:
     ret
 
 upper_bound_x:
-    mov ri r1, 127
-    ret
-
-
-write_letter:
-    mov rr r3, r0
-    mov ri r0, 4
-    sys
+    mov ri r1, 128
     ret

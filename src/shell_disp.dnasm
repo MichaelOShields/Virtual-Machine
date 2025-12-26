@@ -9,7 +9,7 @@
 
 ; start:
 mov ri r1, 1
-mov ri r2, 19
+mov ri r2, 20
 
 mov ri r6, hi(0x5800)
 mov ri r7, lo(0x5800) ; current pos in typing buffer
@@ -29,6 +29,7 @@ starting:
     mov ri r1, 1
     mov ri r2, 1
     call i caret
+    call i render_output
     jmp i loop
 
 loop:
@@ -51,6 +52,9 @@ check_key:
 
     mov ri r0, 1 ; check key syscall id
     sys
+    
+    cmp ri r0, 0
+    jz i no_key
 
     cmp ri r0, 51
     jz i enter
@@ -66,14 +70,38 @@ check_key:
     jz i write_letter
 
     ret
+;
+
+
+upper_bound_x:
+    mov ri r1, 121
+    mov ri r7, lo(0x580F)
+    call i endcaret
+
+    ; since at end of line:
+    call i set_at_end
+
+    ret
+
+lower_bound_x:
+    mov ri r1, 1
+    mov ri r7, lo(0x5800)
+    call i caret
+
+    call i unset_at_end
+
+    ret
+
 
 go_forward:
 
     add ri r7, 1
 
     add ri r1, 8
+
     cmp ri r1, 121
-    jg i backspace
+    jg i upper_bound_x
+
     call i caret
     ret
 
@@ -83,8 +111,11 @@ go_backward:
     sub ri r7, 1
 
     sub ri r1, 8
+
     cmp ri r1, 128
-    jg i go_forward
+    jg i lower_bound_x
+
+    call i caret
     ret
 
 write_letter:
@@ -99,12 +130,14 @@ write_letter:
     call i go_forward
 
     ret
+;
     
+
 
 space:
 
     call i all_chars
-    
+
     mov ri r3, 0 ; space
 
     mov ri r0, 4
@@ -113,7 +146,7 @@ space:
     call i go_forward
 
     ret
-
+;
 
 
 empty_current_letter:
@@ -131,29 +164,44 @@ empty_current_letter:
 
 caret:
     
-    mov ri r3, 27 ; space
+    mov ri r3, symbol_caret
 
-    mov ri r0, 4
+    mov ri r0, 6 ; in-place letter
     sys
 
     ; call i go_forward
     ret
 
+endcaret:
+    mov ri r3, symbol_endcaret
+    mov ri r0, 6 ; in-place letter
+    sys
+
+    ret
+
 
 backspace:
 
+    push r r0
+    mov ri r0, 0
+    cmp mr 0x5820, r0 ; see if we're at the end; if so, we can call the end sequence backspace:
+    pop r r0
+    jnz i end_sequence
+
     call i empty_current_letter
-
     call i go_backward
-
+    call i empty_current_letter
     call i caret
-    
-    ; mov ri r3, 0 ; space
 
-    ; mov ri r0, 4
-    ; sys
+    ret
 
+    end_sequence:
     ; call i go_backward
+    call i empty_current_letter
+    call i caret
+
+    ; since not at the end anymore:
+    call i unset_at_end
 
     ret
 
@@ -185,6 +233,75 @@ shutdown:
     ret
 
 
+render_output:
+    push r r0
+    push r r1
+    push r r2
+    push r r3
+    push r r4
+    push r r5
+    push r r6
+    push r r7
+    
+    mov ri r1, 1
+    mov ri r2, 10
+
+    mov ri r3, symbol_x ; placeholder error vals
+    
+    mov ri r4, hi(0x5810)
+    mov ri r5, lo(0x5810)
+
+    mov ri r6, 0x1F ; limit of low byte
+
+    jmp i output_loop
+
+    output_loop:
+        ; check if current low byte is > 0x1F, if so return:
+        cmp rr r5, r6
+        jg i after_writing
+
+        ; if not:
+        ; render current letter:
+
+        mov rm r3, r4
+        mov ri r0, 4
+        sys
+        ; increment x & low byte:
+        add ri r1, 8
+        add ri r5, 1
+        jmp i output_loop
+
+    after_writing:
+    pop r r7
+    pop r r6
+    pop r r5
+    pop r r4
+    pop r r3
+    pop r r2
+    pop r r1
+    pop r r0
+    ret
+    
+
+set_at_end:
+    push r r0
+
+    mov ri r0, 1
+    
+    mov mr 0x5820, r0
+
+    pop r r0
+    ret
+
+unset_at_end:
+    push r r0
+
+    mov ri r0, 0
+    
+    mov mr 0x5820, r0
+
+    pop r r0
+    ret
 
 ; consts:
 .const "symbol_space", 0
@@ -217,9 +334,18 @@ shutdown:
 .const "symbol_z", 26
 
 .const "symbol_caret", 27
+.const "symbol_endcaret", 28
 
 
 
 
 .org 0x5800 ; 0x5800-0x580F are reserved for the typing buffer (only 15 letters fit on the screen, so that's the max)
+.byte 0
+
+
+.org 0x5810 ; 0x5810-0x581F are reserved for the output buffer
+.str "default   output"
+
+
+.org 0x5820 ; 0x5820 is reserved for the "at-end-of-line" boolean
 .byte 0
