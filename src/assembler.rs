@@ -1593,8 +1593,8 @@ impl Assembler {
             }
         }
         else if name == "str" {
-            if args.len() != 1 {
-                return Err(AssemblerError { message: "str signal arg count incorrect".to_string() });
+            if !(args.len() == 1 || args.len() == 2) {
+                return Err(AssemblerError { message: format!("str signal arg count {} incorrect", args.len()) });
             }
             else {
                 match &args[0] {
@@ -1602,12 +1602,24 @@ impl Assembler {
                         for c in s.chars() {
                             match self.symbols.get(&c) {
                                 Some(v) => returner.push(*v),
-                                None => returner.push(0),
+                                None => /*returner.push(0)*/ (),
                             };
                         }
                     },
                     _ => return Err(AssemblerError { message: "str signal received incorrect arg".to_string() })
                 };
+
+                if let Some(a) = args.get(1) {
+                    let max_length = self.eval_expr(a.clone())?;
+                    if returner.len() > max_length as usize {
+                        return Err(AssemblerError { message: format!("String in .str {:?} longer than limit {} provided.", a, max_length) })
+                    }
+                    else if returner.len() < max_length as usize {
+                        for _ in 0..(max_length as usize - returner.len()) {
+                            returner.push(0)
+                        }
+                    }
+                }
                 
             }
         }

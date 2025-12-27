@@ -1650,7 +1650,7 @@ impl Cpu {
     fn memgetmutable<'a>(&mut self, address: u16, mem: &'a mut Bus) -> Result<&'a mut u8, CPUExit> {
         // self.access = Access::R;
         Ok(mem.get_mutable_ref(address, self.mode, Access::W)?)
-    }   
+    }
 
     fn memgetcore(&mut self, address: u16, mem: &mut Bus) -> Result<u8, CPUExit> {
         Ok(mem.get(address, self.mode, self.access)?)

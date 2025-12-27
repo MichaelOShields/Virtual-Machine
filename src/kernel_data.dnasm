@@ -1,15 +1,4 @@
-; commands start at 0x1200
-.org 0x1200 ; shutdown
-.str "shutdown"
 
-.org 0x1209 ; panic
-.str "panic"
-
-.org 0x120E ; spawn
-.str "spawn"
-
-.org 0x1213 ; kill
-.str "kill"
 
 
 ; kernel info: @0x12C5

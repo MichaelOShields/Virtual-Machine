@@ -76,7 +76,7 @@ check_key:
 upper_bound_x:
     mov ri r1, 121
     mov ri r7, lo(0x580F)
-    call i endcaret
+    ; call i endcaret
 
     ; since at end of line:
     call i set_at_end
@@ -212,27 +212,110 @@ all_chars:
 enter:
 
     ; handle command
-    ; example command: shutdown ("sd" for short because I don't want to write the entire thing)
-    mov ri r5, symbol_s
-    cmp mr 0x5800, r5
-    jz i starts_s
+    call i full_check_shutdown
+    call i full_check_panic
     
-    ; if it doesn't start with s, move on:
-
-    ret
-
-starts_s:
-    mov ri r5, symbol_d
-    cmp mr 0x5801, r5
-    jz i shutdown
+    ; if failed, display failed:
+    mov ri r4, 1
+    call i set_output
+    
     ret
 
 
-shutdown:
+failed_check:
+    ret
+full_check_shutdown:
+    push r r3
+    push r r4
+    push r r5
+    push r r6
+    push r r7
+    call i check_shutdown
+    pop r r7
+    pop r r6
+    pop r r5
+    pop r r4
+    pop r r3
+    ret
+
+full_check_panic:
+    push r r3
+    push r r4
+    push r r5
+    push r r6
+    push r r7
+    call i check_panic
+    pop r r7
+    pop r r6
+    pop r r5
+    pop r r4
+    pop r r3
+    ret
+
+;
+
+check_shutdown:
+
+    mov ri r4, hi(0x5800) ; text buffer
+    mov ri r5, lo(0x5800)
+
+    mov ri r6, hi(0x5821) ; shutdown string
+    mov ri r7, lo(0x5821)
+
+    jmp i ch_shutdown_loop
+
+    ch_shutdown_loop:
+        mov ri r3, 255
+        cmp mr r6, r3
+        jz i command_shutdown
+
+        mov rm r3, r6
+        cmp mr r4, r3
+        jnz i failed_check
+
+        add ri r5, 1
+        add ri r7, 1
+        jmp i ch_shutdown_loop
+
+    ret
+
+check_panic:
+
+    mov ri r4, hi(0x5800) ; text buffer
+    mov ri r5, lo(0x5800)
+
+    mov ri r6, hi(0x582B) ; shutdown string
+    mov ri r7, lo(0x582B)
+
+    jmp i ch_panic_loop
+
+    ch_panic_loop:
+        mov ri r3, 255
+        cmp mr r6, r3
+        jz i command_panic
+
+        mov rm r3, r6
+        cmp mr r4, r3
+        jnz i failed_check
+
+        add ri r5, 1
+        add ri r7, 1
+        jmp i ch_panic_loop
+
+    ret
+
+
+command_panic:
+    mov ri r4, 3
+    call i set_output
+    pnk
+
+command_shutdown:
+    mov ri r4, 2
+    call i set_output
     hlt
     ret
-
-
+    
 render_output:
     push r r0
     push r r1
@@ -282,6 +365,46 @@ render_output:
     pop r r0
     ret
     
+
+
+set_output: ; r4 is ID/idx of msg/output
+    push r r2
+    push r r3
+    push r r6
+    push r r7
+
+    mov ri r3, hi(0x5900)
+    mul ri r4, 16
+
+    dbg r r4
+
+    mov ri r7, 0
+
+    mov ri r5, hi(0x5810)
+    mov ri r6, lo(0x5810)
+
+    set_output_loop:
+
+        cmp ri r7, 0x10
+        jz i done
+
+        mov rm r2, r3
+        mov mr r5, r2
+
+        add ri r7, 1
+        add ri r6, 1
+        add ri r4, 1
+        jmp i set_output_loop
+
+
+    done:
+    pop r r7
+    pop r r6
+    pop r r3
+    pop r r2
+    call i render_output
+    ret
+
 
 set_at_end:
     push r r0
@@ -336,16 +459,45 @@ unset_at_end:
 .const "symbol_caret", 27
 .const "symbol_endcaret", 28
 
-
-
-
 .org 0x5800 ; 0x5800-0x580F are reserved for the typing buffer (only 15 letters fit on the screen, so that's the max)
 .byte 0
 
 
 .org 0x5810 ; 0x5810-0x581F are reserved for the output buffer
-.str "default   output"
+.byte 0
 
 
 .org 0x5820 ; 0x5820 is reserved for the "at-end-of-line" boolean
 .byte 0
+
+
+; commands start at 0x5821
+.org 0x5821 ; shutdown
+.str "shutdown"
+
+.byte 255
+
+.org 0x582B ; panic
+.str "panic"
+.byte 255
+
+.org 0x5833 ; spawn
+.str "spawn"
+.byte 255
+
+.org 0x583B ; kill
+.str "kill"
+.byte 255
+
+
+.org 0x5900 ; pre-written output strings. starts w/ check failed
+.str "default   output", 16
+
+.org 0x5910 ; 1
+.str "cmd not found", 16
+
+.org 0x5920 ; 2
+.str "shutting down", 16
+
+.org 0x5930 ; 3
+.str "panicking", 16
