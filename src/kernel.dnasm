@@ -547,15 +547,15 @@ convert_xy:
     mov rr r6, r5
     ; mul ri r6, 16
 
-    ; now, do high += (y * 16) / 8
-    div ri r6, 16
+    ; now, do high += y / 16
+    div ri r6, 8
 
     add rr r1, r6
 
     ; get original Y back for low += (y * 16) % 8
     mov rr r6, r5
     
-    mul ri r6, 16
+    mul ri r6, 8
 
     ; mod ri r6, 8
 
@@ -564,7 +564,7 @@ convert_xy:
     ; now let's do x, which is pretty simple: add x/8 to low byte
 
     mov rr r6, r4
-    div ri r6, 8
+    div ri r6, 4
     add rr r2, r6
 
 
@@ -576,13 +576,15 @@ convert_xy:
 
     
 
-    ; now just do 0b1000_0000 >> (x % 8), then OR that into mem
+    ; now just do 0b0000_0001 >> (x % 8), then OR that into mem
 
-    mov ri r3, 0b0000_0001
+    mov ri r3, 0b0000_0011
 
-    mod ri r6, 8 ; modulo op, get remainder
+    mod ri r6, 4 ; modulo op, get remainder
 
     jz i grab_last_byte_bit
+
+    mul ri r6, 2
 
     shrw rr r3, r6
 
@@ -591,15 +593,24 @@ convert_xy:
 
     ret
 
+dec_r1:
+    sub ri r1, 1
+    ret
+
+dec_r2:
+    sub ri r2, 1
+    jc i dec_r1
+    ret
+
 grab_last_byte_bit: ; this is when we reach a new byte, but need to get the pixel that's just to the left of the leftmost bit
     ; assumes r1:r2 are high and low
-    sub ri r2, 1
-    mov ri r3, 0b0000_0001
+    call i dec_r2
+    mov ri r3, 0b0000_0011
     jmp i grabbed_bit
 
 
 go_down:
-    add ri r2, 16
+    add ri r2, 32
     jc i inc_r1
     ret
 
@@ -607,20 +618,55 @@ inc_r1:
     add ri r1, 1
     ret
 
-next_letter_line:
-    mov rm r7, r4
-    mov mr r1, r7
-    call i go_down
-    add ri r5, 1
+inc_r4:
+    add ri r4, 1
     ret
 
-next_inplace_letter_line:
-    mov rm r7, r4
+next_byte:
+    add ri r5, 1
+    jc i inc_r4
+    ret
 
+letter_byte:
+    mov rm r7, r4
+    mov mr r1, r7
+
+    call i next_byte
+    
+    ; mov rm r7, r4
+    ; mov mr r1, r7
+
+    ret
+
+
+inplace_letter_byte:
+    mov rm r7, r4
     or mr r1, r7
 
+    call i next_byte
+    
+    ; mov rm r7, r4
+    ; or mr r1, r7
+
+    ret
+
+    
+
+next_writing_line: ; this is wr
+    call i letter_byte
+
     call i go_down
-    add ri r5, 1
+
+    ; call i next_byte
+
+    ret
+
+next_inplace_writing_line:
+    call i inplace_letter_byte
+
+    call i go_down
+
+    ; call i next_byte
     ret
 
 
@@ -664,13 +710,13 @@ write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
 
 
 
-    call i next_letter_line
-    call i next_letter_line
-    call i next_letter_line
-    call i next_letter_line
-    call i next_letter_line
-    call i next_letter_line
-    call i next_letter_line
+    call i next_writing_line
+    call i next_writing_line
+    call i next_writing_line
+    call i next_writing_line
+    call i next_writing_line
+    call i next_writing_line
+    call i next_writing_line
 
     jmp i resume_prog_sys
 
@@ -712,18 +758,18 @@ write_letter_in_place: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
 
 
 
-    call i next_inplace_letter_line
-    call i next_inplace_letter_line
-    call i next_inplace_letter_line
-    call i next_inplace_letter_line
-    call i next_inplace_letter_line
-    call i next_inplace_letter_line
-    call i next_inplace_letter_line
+    call i next_inplace_writing_line
+    call i next_inplace_writing_line
+    call i next_inplace_writing_line
+    call i next_inplace_writing_line
+    call i next_inplace_writing_line
+    call i next_inplace_writing_line
+    call i next_inplace_writing_line
 
     jmp i resume_prog_sys
 
 
-pixel_on:
+pixel_on_33:
 
     call i before_pixel_op
 
@@ -745,7 +791,48 @@ pixel_on:
     jmp i resume_prog_sys
 
 
+pixel_on_66:
 
+    call i before_pixel_op
+
+    
+    
+    call i convert_xy
+    ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
+
+    
+    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
+
+    or rm r3, r1 ; get actual pixels in mem & OR them
+    
+
+    ; put r7 (final byte) into mem
+    mov mr r1, r3
+
+
+    jmp i resume_prog_sys
+
+
+pixel_on_full:
+
+    call i before_pixel_op
+
+    
+    
+    call i convert_xy
+    ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
+
+    
+    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
+
+    or rm r3, r1 ; get actual pixels in mem & OR them
+    
+
+    ; put r7 (final byte) into mem
+    mov mr r1, r3
+
+
+    jmp i resume_prog_sys
 
 pixel_off:
 
@@ -967,9 +1054,9 @@ handle_syscall:
     jz i get_key
 
 
-    cmp ri r0, 2 ; turn on pixel with x = r1 and y = r2
+    cmp ri r0, 2 ; turn on pixel with x = r1 and y = r2 ; turns to 33%
 
-    jz i pixel_on
+    jz i pixel_on_33
 
     cmp ri r0, 3 ; turn off pixel with x = r1 and y = r2
     jz i pixel_off

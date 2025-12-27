@@ -170,25 +170,33 @@ impl ApplicationHandler for App {
                     
                     let scale = 4; // 512 / 128
                     for (byte_idx, &byte) in self.vm.video.framebuffer.iter().enumerate() {
-                        for bit_idx in 0..8 {
-                            let fb_pixel_idx = byte_idx * 8 + bit_idx;
+                        for pixel_in_byte in 0..4 {
+                            let fb_pixel_idx = byte_idx * 4 + pixel_in_byte;
+
                             let x = fb_pixel_idx % 128;
                             let y = fb_pixel_idx / 128;
-                            let color = if (byte >> (7 - bit_idx)) & 1 == 1 {
-                                0xFFFFFFFF
-                            } else {
-                                0xFF000000
-                            };
-                            
-                            // Draw scale x scale block
+
+                            let shift = 6 - pixel_in_byte * 2;
+                            let value = (byte >> shift) & 0b11;
+
+                            let intensity = (value as u32 * 255) / 3;
+                            let color =
+                                0xFF000000 |
+                                (intensity << 16) |
+                                (intensity << 8) |
+                                intensity;
+
                             for dy in 0..scale {
                                 for dx in 0..scale {
-                                    let screen_idx = (y * scale + dy) * 512 + (x * scale + dx);
+                                    let screen_idx =
+                                        (y * scale + dy) * (128 * scale) +
+                                        (x * scale + dx);
                                     buf[screen_idx] = color;
                                 }
                             }
                         }
                     }
+
                     
                     buf.present().unwrap();
                 } // buffer presented on drop

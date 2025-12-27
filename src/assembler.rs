@@ -300,7 +300,7 @@ impl Lexer {
                 ',' => Ok(self.basic_token(Token::COMMA)),
                 '<' => Ok(self.read_ineq(Token::LESSTHAN)?),
                 '>' => Ok(self.read_ineq(Token::GREATERTHAN)?),
-                '!' => Ok(self.basic_token(Token::EXCLAMATION)),
+                '!' => Ok(self.basic_token(Token::NEWLINE)),
                 '.' => Ok(self.basic_token(Token::PERIOD)),
                 '~' => self.read_comment(),
                 '"' => self.read_string(),
