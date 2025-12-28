@@ -570,66 +570,14 @@ convert_xy:
 
     mod ri r6, 4
 
-
-
     jz i grab_last_byte_bit
 
-    mov ri r3, 0b0000_0011
+    mov ri r3, 0b0000_0001 ; x3 for full brightness, x2 for 66%, x1 for 33%
 
     mul ri r6, 2
 
 
     shrw rr r3, r6
-
-
-
-
-    ; ; let's start with y:
-    
-    ; ; need to get y * 16, will put it in r6
-    ; mov rr r6, r5
-    ; ; mul ri r6, 16
-
-    ; ; now, do high += y / 16
-    ; div ri r6, 64
-
-    ; ; add rr r1, r6
-
-    ; ; get original Y back for low += (y * 16) % 8
-    ; mov rr r6, r5
-    
-    ; mul ri r6, 64
-
-    ; ; mod ri r6, 8
-
-    ; add rr r2, r6
-
-    ; ; now let's do x, which is pretty simple: add x/8 to low byte
-
-    ; mov rr r6, r4
-    ; div ri r6, 4
-    ; add rr r2, r6
-
-
-    ; ; now let's handle r3:
-    ; mov rr r6, r4 ; move x so we can perform ops on it
-
-
-
-
-    
-
-    ; ; now just do 0b0000_0001 >> (x % 8), then OR that into mem
-
-    ; mov ri r3, 0b0000_0011
-
-    ; mod ri r6, 4 ; modulo op, get remainder
-
-    ; jz i grab_last_byte_bit
-
-    ; mul ri r6, 2
-
-    ; shrw rr r3, r6
 
     grabbed_bit:
 
@@ -649,7 +597,7 @@ dec_r2:
 grab_last_byte_bit: ; this is when we reach a new byte, but need to get the pixel that's just to the left of the leftmost bit
     ; assumes r1:r2 are high and low
     call i dec_r2
-    mov ri r3, 0b0000_0011
+    mov ri r3, 0b0000_0001
     jmp i grabbed_bit
 
 
@@ -919,106 +867,6 @@ write_letter_in_place:
     jmp i resume_prog_sys
 
 
-
-
-
-
-; write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
-;     call i before_pixel_op
-
-;     ; in addition to before_pixel_op bound checks:
-;     ; letters are 5x7, so ensure that they won't write into illegal mem:
-    
-;     ; compare r1 (x) to 127, jump if greater than to do nothing probably
-;     ; cmp ri r1, 123  ; 128-5 = 123
-;     ; jg i failed_pixel_op
-
-;     ; cmp ri r1, 5
-;     ; jl i failed_pixel_op
-
-;     ; same with r2 (y)
-;     ; cmp ri r2, 121 ; 128-7 = 121
-;     ; jg i failed_pixel_op
-
-;     ; now the main function:
-
-;     push r r3 ; save r3 b/c convert_xy tramples it
-
-
-;     call i convert_xy
-
-;     pop r r3
-    
-
-
-;     ; start writing:
-;     mov ri r4, hi(0x1600) ; letters
-;     mov ri r5, lo(0x1600)
-
-;     mul ri r3, 7
-;     add rr r5, r3           ; get ptr aligned w/ correct letter
-
-
-
-;     call i next_writing_line
-;     call i next_writing_line
-;     call i next_writing_line
-;     call i next_writing_line
-;     call i next_writing_line
-;     call i next_writing_line
-;     call i next_writing_line
-
-;     jmp i resume_prog_sys
-
-
-; write_letter_in_place: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
-;     call i before_pixel_op
-
-;     ; in addition to before_pixel_op bound checks:
-;     ; letters are 5x7, so ensure that they won't write into illegal mem:
-    
-;     ; compare r1 (x) to 127, jump if greater than to do nothing probably
-;     ; cmp ri r1, 123  ; 128-5 = 123
-;     ; jg i failed_pixel_op
-
-;     ; cmp ri r1, 5
-;     ; jl i failed_pixel_op
-
-;     ; same with r2 (y)
-;     ; cmp ri r2, 121 ; 128-7 = 121
-;     ; jg i failed_pixel_op
-
-;     ; now the main function:
-
-;     push r r3 ; save r3 b/c convert_xy tramples it
-
-
-;     call i convert_xy
-
-;     pop r r3
-    
-
-
-;     ; start writing:
-;     mov ri r4, hi(0x1600)
-;     mov ri r5, lo(0x1600)
-
-;     mul ri r3, 7
-;     add rr r5, r3           ; get ptr aligned w/ correct letter
-
-
-
-;     call i next_inplace_writing_line
-;     call i next_inplace_writing_line
-;     call i next_inplace_writing_line
-;     call i next_inplace_writing_line
-;     call i next_inplace_writing_line
-;     call i next_inplace_writing_line
-;     call i next_inplace_writing_line
-
-;     jmp i resume_prog_sys
-
-
 pixel_on_33:
 
     call i before_pixel_op
@@ -1029,13 +877,11 @@ pixel_on_33:
     ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
 
     
-    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
+    ; OR operation - only turn on the specific pixel
 
-    or rm r3, r1 ; get actual pixels in mem & OR them
-    
 
     ; put r7 (final byte) into mem
-    mov mr r1, r3
+    or mr r1, r3
 
 
     jmp i resume_prog_sys
@@ -1044,20 +890,12 @@ pixel_on_33:
 pixel_on_66:
 
     call i before_pixel_op
-
-    
-    
     call i convert_xy
     ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
-
-    
-    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
-
-    or rm r3, r1 ; get actual pixels in mem & OR them
-    
-
+    mul ri r3, 2
+    ; OR operation - only turn on the specific pixel
     ; put r7 (final byte) into mem
-    mov mr r1, r3
+    or mr r1, r3
 
 
     jmp i resume_prog_sys
@@ -1065,21 +903,14 @@ pixel_on_66:
 
 pixel_on_full:
 
-    call i before_pixel_op
 
-    
-    
+    call i before_pixel_op
     call i convert_xy
     ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
-
-    
-    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
-
-    or rm r3, r1 ; get actual pixels in mem & OR them
-    
-
+    mul ri r3, 3
+    ; OR operation - only turn on the specific pixel
     ; put r7 (final byte) into mem
-    mov mr r1, r3
+    or mr r1, r3
 
 
     jmp i resume_prog_sys
@@ -1091,11 +922,9 @@ pixel_off:
     call i convert_xy
     ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
 
-    ; OR operation - only turn on the specific pixel specified by 8 - (x % 8)
-    xor rm r3, r1 ; get actual pixels in mem & OR them
 
     ; put r7 (final byte) into mem
-    mov mr r1, r3
+    xor mr r1, r3
 
     jmp i resume_prog_sys
 
@@ -1194,10 +1023,10 @@ ktrap_catch:
     ; diagnose cpuexit
 
     cmp ri r7, 0b0000 ; none, probably do nothing
-    jz i resume_prog
+    jz i kernel
 
     cmp ri r7, 0b0001 ; timer, return control to kernel
-    jz i resume_prog
+    jz i kernel
 
 
     cmp ri r7, 0b0010 ; halt, since it's a cpu exit we kill the application
@@ -1296,7 +1125,7 @@ handle_syscall:
 
     cmp ri r0, 0 ; no syscall, just return
 
-    jz i resume_prog
+    jz i kernel
 
 
     cmp ri r0, 1 ; see if there's a new input, if so return it
@@ -1319,6 +1148,12 @@ handle_syscall:
 
     cmp ri r0, 6 ; write letter at (x: r1, y: r2) specified by r3, but DON'T override the preexisting letter
     jz i write_letter_in_place
+
+    cmp ri r0, 7 ; pixel on 66%
+    jz i pixel_on_66
+
+    cmp ri r0, 8 ; pixel on full
+    jz i pixel_on_full
 
     
     jmp i resume_prog_sys
@@ -1347,7 +1182,7 @@ set_waiting_input:
     pop r r0
 
     ; have already saved everything, but we probably want to go to the next program in the scheduler:
-    jmp i resume_prog
+    jmp i kernel
 
 
 

@@ -18,7 +18,7 @@ loop_full_row:
     cmp ri r1, 129
     jz i starting
 
-    mov ri r0, 2 ; turn on pixel
+    mov ri r0, 8 ; turn on pixel
     sys
 
     add ri r1, 1
@@ -185,6 +185,8 @@ endcaret:
 
 backspace:
 
+
+
     push r r0
     mov ri r0, 0
     cmp mr 0x5820, r0 ; see if we're at the end; if so, we can call the end sequence backspace:
@@ -195,6 +197,8 @@ backspace:
     call i go_backward
     call i empty_current_letter
     call i caret
+
+    call i all_chars
 
     ret
 

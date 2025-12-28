@@ -66,7 +66,7 @@ all_keys:
 
 
 on_sys:
-    mov ri r0, 2
+    mov ri r0, 8
     sys
     ret
 
