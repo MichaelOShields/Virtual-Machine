@@ -1265,7 +1265,7 @@ impl Cpu {
 
         // self.access = Access::X;
 
-
+        // self.status();
         let pc2 = self.pop(mem)?;
         let pc1 = self.pop(mem)?;
         // println!("pc2: {:0x}", pc2);
@@ -1542,7 +1542,7 @@ impl Cpu {
 
     fn op_dbg(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         println!("DEBUG:");
-        self.status();
+        // self.status();
         self.debug(mem);
         let val = self.single_val(mode, reg, mem)?;
         println!("Debug num: {}", val);
@@ -1591,10 +1591,17 @@ impl Cpu {
             self.mode = CPUMode::K;
 
             self.access = Access::X;
+            
+            if self.instruction_ctr < 2 {
+                self.instruction_ctr = 0;
+            }
+            else {
+                self.instruction_ctr -= 2;
+            }
 
             let exit_id: u8 = match exit {
                 CPUExit::None => 0b0000,
-                CPUExit::Timer => 0b0001,
+                CPUExit::Timer => {/*println!("Timer exit"); self.status(); */0b0001},
                 CPUExit::Halt => 0b0010,
                 CPUExit::Syscall => 0b0011,
                 CPUExit::Fault(ref f) => match f {
@@ -1684,7 +1691,7 @@ impl Cpu {
             CPUMode::K => {
                 self.halted = true;
                 println!("Halting...");
-                self.debug(mem);
+                // self.debug(mem);
                 Ok(())
             },
             CPUMode::U => return Err(CPUExit::Halt),
@@ -1831,6 +1838,7 @@ impl Cpu {
             self.instruction_ctr += 1;
             if self.instruction_ctr >= self.instruction_lim {
                 self.instruction_ctr = 0;
+                // println!("Timer exiting");
                 return Err(CPUExit::Timer);
             }
         }

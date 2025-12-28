@@ -41,8 +41,6 @@ check_key:
     mov ri r0, 1 ; check key syscall id
     sys
 
-    sdb r r0
-
 
     cmp ri r0, 27
     jz i go_up
@@ -63,6 +61,7 @@ no_move:
 
 all_keys:
     call i off_sys
+    ; sdb i 5
     ret
 
 

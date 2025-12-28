@@ -17,6 +17,8 @@ pub enum MemRange {
     UserData ( Range<u16>, u8 ),
     UserHeap ( Range<u16>, u8 ),
     UserStack ( Range<u16>, u8 ),
+
+    SharedData ( Range<u16> ),
 }
 
 impl MemRange {
@@ -42,6 +44,7 @@ impl MemRange {
             | MemRange::UserData(r, _)
             | MemRange::UserHeap(r, _)
             | MemRange::UserStack(r, _)
+            | MemRange::SharedData (r)
             => r.contains(&addr),
         }
     }
@@ -60,7 +63,8 @@ impl MemRange {
             Self::UserCode(_, t) => {
                 // println!("t (code): {}", t);
                 (mode == CPUMode::K && matches!(access, Access::X | Access::R)) || 
-                (mode == CPUMode::U && matches!(access, Access::X | Access::R) && (*t == current_task))},
+                (mode == CPUMode::U && matches!(access, Access::X | Access::R) && (*t == current_task))
+            },
             
             Self::UserData(_, t) =>  
                 (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
@@ -76,6 +80,11 @@ impl MemRange {
                     (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
                     (mode == CPUMode::U && matches!(access, Access::R | Access::W) && (*t == current_task))},
 
+            Self::SharedData (_) => {
+                // println!("t (code): {}", t);
+                (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
+                (mode == CPUMode::U && matches!(access, Access::R))
+            },
 
             _ => panic!("Couldn't identify memory range."),
             
@@ -161,10 +170,12 @@ impl Bus {
         user_heap_6:  Range<u16>,
         user_stack_6: Range<u16>,
 
-        user_code_7:  Range<u16>,
-        user_data_7:  Range<u16>,
-        user_heap_7:  Range<u16>,
-        user_stack_7: Range<u16>,
+        shared_data: Range<u16>,
+
+        // user_code_7:  Range<u16>,
+        // user_data_7:  Range<u16>,
+        // user_heap_7:  Range<u16>,
+        // user_stack_7: Range<u16>,
 
     ) -> Self {
         let mmio_range = mmio.clone();
@@ -212,10 +223,10 @@ impl Bus {
         let user_heap_6  = MemRange::UserHeap ( user_heap_6, 6);
         let user_stack_6 = MemRange::UserStack ( user_stack_6, 6);
 
-        let user_code_7  = MemRange::UserCode ( user_code_7, 7);
-        let user_data_7  = MemRange::UserData ( user_data_7, 7);
-        let user_heap_7  = MemRange::UserHeap ( user_heap_7, 7);
-        let user_stack_7 = MemRange::UserStack ( user_stack_7, 7);
+        // let user_code_7  = MemRange::UserCode ( user_code_7, 7);
+        // let user_data_7  = MemRange::UserData ( user_data_7, 7);
+        // let user_heap_7  = MemRange::UserHeap ( user_heap_7, 7);
+        // let user_stack_7 = MemRange::UserStack ( user_stack_7, 7);
 
 
         let ranges = vec![
@@ -235,7 +246,7 @@ impl Bus {
             user_code_4,  user_data_4,  user_heap_4,  user_stack_4,
             user_code_5,  user_data_5,  user_heap_5,  user_stack_5,
             user_code_6,  user_data_6,  user_heap_6,  user_stack_6,
-            user_code_7,  user_data_7,  user_heap_7,  user_stack_7,
+            // user_code_7,  user_data_7,  user_heap_7,  user_stack_7,
         ];
 
         
@@ -267,7 +278,8 @@ impl Bus {
                 | MemRange::UserCode(r, _)
                 | MemRange::UserData(r, _)
                 | MemRange::UserHeap(r, _)
-                | MemRange::UserStack(r, _) => r,
+                | MemRange::UserStack(r, _)
+                | MemRange::SharedData(r) => r,
             };
             if actual_range.contains(&address) {
                 // println!("Range: {:?}", range);

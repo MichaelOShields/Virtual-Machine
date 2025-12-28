@@ -24,6 +24,19 @@ loop_full_row:
     add ri r1, 1
     jmp i loop_full_row
 
+; full_column:
+;     mov ri r1, 20
+;     mov ri r2, 1
+
+; loop_full_column:
+;     cmp ri r2, 128
+;     jz i starting
+
+;     mov ri r0, 8 ; turn on pixel
+;     sys
+
+;     add ri r2, 1
+;     jmp i loop_full_column
 
 starting:
     mov ri r1, 1
@@ -58,6 +71,18 @@ check_key:
     
     cmp ri r0, 0
     jz i no_key
+
+    cmp ri r0, 54 ; tab
+    jz i toggle_foc
+
+
+    ; otherwise, let's make sure we're in focus:
+    push r r0
+    mov ri r0, 0
+    cmp mr 0x59FF, r0 ; jz means we aren't focused
+    pop r r0
+    jz i no_key
+
 
     cmp ri r0, 51
     jz i enter
@@ -369,7 +394,53 @@ command_shutdown:
     call i set_output
     hlt
     ret
+;
+
+draw_line: ; assumes r0 is either 2 (33%), 3 (off), 7 (66%), or 8 (100%)
+    push r r1
+    push r r2
+    mov ri r1, 1
+    mov ri r2, 20
+    line_loop:
+        cmp ri r1, 129
+        jz i done_drawing
+
+        sys
+
+        add ri r1, 1
+        jmp i line_loop
     
+
+    done_drawing:
+    pop r r2
+    pop r r1
+    ret
+
+
+unfocus:
+
+    mov ri r0, 2
+    call i draw_line
+
+    mov ri r0, 0
+    mov mr 0x59FF, r0
+
+    ret
+
+focus:
+    mov ri r0, 8 ; 33%
+    call i draw_line
+    mov ri r0, 1
+    mov mr 0x59FF, r0
+    ret
+
+toggle_foc:
+    mov ri r5, 1 ; "focused"
+    cmp mr 0x59FF, r5
+    jz i unfocus
+    jnz i focus
+    ret
+
 render_output:
     push r r0
     push r r1
@@ -430,7 +501,7 @@ set_output: ; r4 is ID/idx of msg/output
     mov ri r3, hi(0x5900)
     mul ri r4, 16
 
-    dbg r r4
+    ; dbg r r4
 
     mov ri r7, 0
 
@@ -562,3 +633,6 @@ unset_at_end:
 
 .org 0x5940 ; 4
 .str "abcdefghijklmnop", 16
+
+.org 0x59FF ; "focused" boolean
+.byte 1

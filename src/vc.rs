@@ -14,7 +14,7 @@ pub struct VideoController {
 impl VideoController {
     pub fn new(width: usize, height: usize, vram_base: u16) -> Self {
         Self {
-            framebuffer: vec![0; (width * height) / 8],
+            framebuffer: vec![0; (width * height) / 4],
             vram_base,
         }
     }

@@ -520,6 +520,7 @@ failed_pixel_op:
 
 
     mov ri r0, 0 ; signal failed operation
+
     jmp i resume_prog_sys
 
 
@@ -881,6 +882,10 @@ pixel_on_33:
 
 
     ; put r7 (final byte) into mem
+    mul ri r3, 3
+    andn mr r1, r3
+    div ri r3, 3
+
     or mr r1, r3
 
 
@@ -892,9 +897,15 @@ pixel_on_66:
     call i before_pixel_op
     call i convert_xy
     ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
+
+    mul ri r3, 3
+    andn mr r1, r3
+    div ri r3, 3
+
     mul ri r3, 2
-    ; OR operation - only turn on the specific pixel
-    ; put r7 (final byte) into mem
+
+
+    
     or mr r1, r3
 
 
@@ -907,6 +918,12 @@ pixel_on_full:
     call i before_pixel_op
     call i convert_xy
     ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
+
+    mul ri r3, 3
+    andn mr r1, r3
+    div ri r3, 3
+
+
     mul ri r3, 3
     ; OR operation - only turn on the specific pixel
     ; put r7 (final byte) into mem
@@ -1048,7 +1065,7 @@ ktrap_catch:
 
 
 
-    jmp i kernel
+    hlt
 
 
 
@@ -1090,34 +1107,6 @@ resume_prog_sys:
 
 
     kret
-
-
-resume_prog:
-    ; set usp
-    ; mov ri r2, hi(0x1300)
-    ; mov ri r3, lo(0x1300)
-    ; add rr r3, r0
-
-    ; ssp m r2
-
-    ; ; push UPC (big endian) for KRET:
-    ; mov ri r2, hi(0x130F)
-    ; mov ri r3, lo(0x130F)
-    ; add rr r3, r0
-
-    ; push m r2
-    ; add ri r3, 1
-    ; push m r2
-
-    ; ; load user regs
-    ; mov ri r4, hi(0x1302)
-    ; mov ri r5, lo(0x1302)
-    ; add rr r5, r0
-    ; call i load_uregs ; assumes [r4:r5] is alr correct
-
-    ; kret
-
-    jmp i kernel
 
 
 handle_syscall:

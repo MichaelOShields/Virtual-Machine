@@ -137,6 +137,7 @@ impl ApplicationHandler for App {
                     Key::Named(NamedKey::Enter) => 51,
                     Key::Named(NamedKey::Escape) => 52,
                     Key::Named(NamedKey::Space) => 53,
+                    Key::Named(NamedKey::Tab) => 54,
                     _ => 0,
                 };
 
@@ -155,7 +156,7 @@ impl ApplicationHandler for App {
                 
                 self.vm
                     .video
-                    .update_framebuffer(self.vm.mem.get_range(0x2400, 0x3200));
+                    .update_framebuffer(self.vm.mem.get_range(0x2400, 0x3400));
 
                 // ---- blit VM framebuffer into softbuffer surface -------------
                 let surf  = self.surface.as_mut().unwrap();
@@ -353,10 +354,13 @@ fn main() {
     let user_heap_6  = 0xD200..0xDC00;
     let user_stack_6 = 0xDC00..0xE000;
 
-    let user_code_7  = 0xE000..0xE800;
-    let user_data_7  = 0xE800..0xEA00;
-    let user_heap_7  = 0xEA00..0xF400;
-    let user_stack_7 = 0xF400..0xF800;
+
+    let shared_data = 0xE000..0xF800;
+
+    // let user_code_7  = 0xE000..0xE800;
+    // let user_data_7  = 0xE800..0xEA00;
+    // let user_heap_7  = 0xEA00..0xF400;
+    // let user_stack_7 = 0xF400..0xF800;
 
 
     let cpu = Cpu::new(kernel_traps.start);
@@ -411,10 +415,12 @@ fn main() {
         user_heap_6,
         user_stack_6,
 
-        user_code_7,
-        user_data_7,
-        user_heap_7,
-        user_stack_7,
+        shared_data,
+
+        // user_code_7,
+        // user_data_7,
+        // user_heap_7,
+        // user_stack_7,
 
     );
 
