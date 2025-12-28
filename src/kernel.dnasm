@@ -541,52 +541,95 @@ convert_xy:
     mov ri r1, hi(0x2400) ; vram base pos
     mov ri r2, lo(0x2400)
 
-    ; let's start with y:
-    
-    ; need to get y * 16, will put it in r6
+    ; 00 00 00 00
+    ; 00 00 00 00
+    ; 00 00 00 00
+    ; 00 00 00 00
+
+    ; y:
     mov rr r6, r5
-    ; mul ri r6, 16
-
-    ; now, do high += y / 16
     div ri r6, 8
-
     add rr r1, r6
 
-    ; get original Y back for low += (y * 16) % 8
     mov rr r6, r5
-    
-    mul ri r6, 8
-
-    ; mod ri r6, 8
-
+    mod ri r6, 8
+    mul ri r6, 32
     add rr r2, r6
 
-    ; now let's do x, which is pretty simple: add x/8 to low byte
 
+
+    ; x:
     mov rr r6, r4
     div ri r6, 4
+
     add rr r2, r6
 
 
-    ; now let's handle r3:
-    mov rr r6, r4 ; move x so we can perform ops on it
+    ; now for the individual pixel:
+    mov rr r6, r4
+
+    mod ri r6, 4
 
 
-
-
-    
-
-    ; now just do 0b0000_0001 >> (x % 8), then OR that into mem
-
-    mov ri r3, 0b0000_0011
-
-    mod ri r6, 4 ; modulo op, get remainder
 
     jz i grab_last_byte_bit
 
+    mov ri r3, 0b0000_0011
+
     mul ri r6, 2
 
+
     shrw rr r3, r6
+
+
+
+
+    ; ; let's start with y:
+    
+    ; ; need to get y * 16, will put it in r6
+    ; mov rr r6, r5
+    ; ; mul ri r6, 16
+
+    ; ; now, do high += y / 16
+    ; div ri r6, 64
+
+    ; ; add rr r1, r6
+
+    ; ; get original Y back for low += (y * 16) % 8
+    ; mov rr r6, r5
+    
+    ; mul ri r6, 64
+
+    ; ; mod ri r6, 8
+
+    ; add rr r2, r6
+
+    ; ; now let's do x, which is pretty simple: add x/8 to low byte
+
+    ; mov rr r6, r4
+    ; div ri r6, 4
+    ; add rr r2, r6
+
+
+    ; ; now let's handle r3:
+    ; mov rr r6, r4 ; move x so we can perform ops on it
+
+
+
+
+    
+
+    ; ; now just do 0b0000_0001 >> (x % 8), then OR that into mem
+
+    ; mov ri r3, 0b0000_0011
+
+    ; mod ri r6, 4 ; modulo op, get remainder
+
+    ; jz i grab_last_byte_bit
+
+    ; mul ri r6, 2
+
+    ; shrw rr r3, r6
 
     grabbed_bit:
 
@@ -601,6 +644,7 @@ dec_r2:
     sub ri r2, 1
     jc i dec_r1
     ret
+
 
 grab_last_byte_bit: ; this is when we reach a new byte, but need to get the pixel that's just to the left of the leftmost bit
     ; assumes r1:r2 are high and low
@@ -618,13 +662,8 @@ inc_r1:
     add ri r1, 1
     ret
 
-inc_r4:
-    add ri r4, 1
-    ret
-
 next_byte:
     add ri r5, 1
-    jc i inc_r4
     ret
 
 letter_byte:
@@ -672,101 +711,362 @@ next_inplace_writing_line:
 
 ; pixel ops:
 
+get_current_line: ; assumes r4:r5 is writing line, puts it into r3
+    mov rm r3, r4
+    ret
 
-write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
+inc_r1_byte:
+    add ri r1, 1
+    jc i inc_r0
+    ret
+
+inc_r0:
+    add ri r0, 1
+    ret
+
+next_line:
+    ; need to do some fancy shit
+    call i get_current_line ; get current letter line
+
+    ; r6, r7 are free.
+    ; r6 = first byte of the line
+    ; r7 = second byte of the line
+
+    ; let's start with the first 4 bits (msb-wise):
+    shr ri r3, 4 ; isolate first 4 bits of letter line
+
+    mov ri r6, 0
+    mov ri r7, 0
+
+    ; for first bit (msb), need to figure out if it's on:
+    first_bit1:
+    and ri r3, 0b0000_1000
+    cmp ri r3, 8
+    jnz i second_bit1 ; skip this part if it isn't "on"
+
+    add ri r6, 0b1100_0000
+
+    second_bit1:
+
+    call i get_current_line
+    shr ri r3, 4
+    
+    and ri r3, 0b0000_0100
+    cmp ri r3, 4
+    jnz i third_bit1
+
+    add ri r6, 0b0011_0000
+
+    third_bit1:
+
+    call i get_current_line
+    shr ri r3, 4
+    
+    and ri r3, 0b0000_0010
+    cmp ri r3, 2
+    jnz i fourth_bit1
+
+    add ri r6, 0b0000_1100
+
+    fourth_bit1:
+
+    call i get_current_line
+    shr ri r3, 4
+    
+    and ri r3, 0b0000_0001
+    cmp ri r3, 1
+    jnz i second_byte
+
+    add ri r6, 0b0000_0011
+
+    second_byte:
+
+    call i get_current_line
+    ; no need to shr this time
+
+    first_bit2:
+    and ri r3, 0b0000_1000
+    cmp ri r3, 8
+    jnz i second_bit2 ; skip this part if it isn't "on"
+
+    add ri r7, 0b1100_0000
+
+    second_bit2:
+
+    call i get_current_line
+    
+    and ri r3, 0b0000_0100
+    cmp ri r3, 4
+    jnz i third_bit2
+
+    add ri r7, 0b0011_0000
+
+    third_bit2:
+
+    call i get_current_line
+    
+    and ri r3, 0b0000_0010
+    cmp ri r3, 2
+    jnz i fourth_bit2
+
+    add ri r7, 0b0000_1100
+
+    fourth_bit2:
+
+    call i get_current_line
+    
+    and ri r3, 0b0000_0001
+    cmp ri r3, 1
+    jnz i done_line
+
+    add ri r7, 0b0000_0011
+
+
+    done_line:
+    ret
+
+inc_r4:
+    add ri r4, 1
+    ret
+
+inc_r5:
+    add ri r5, 1
+    jc i inc_r4
+    ret
+
+go_down_r1:
+    add ri r1, 31
+    jc i inc_r0
+    ret
+
+write_letter:
     call i before_pixel_op
 
-    ; in addition to before_pixel_op bound checks:
-    ; letters are 5x7, so ensure that they won't write into illegal mem:
-    
-    ; compare r1 (x) to 127, jump if greater than to do nothing probably
-    ; cmp ri r1, 123  ; 128-5 = 123
-    ; jg i failed_pixel_op
-
-    ; cmp ri r1, 5
-    ; jl i failed_pixel_op
-
-    ; same with r2 (y)
-    ; cmp ri r2, 121 ; 128-7 = 121
-    ; jg i failed_pixel_op
-
-    ; now the main function:
-
-    push r r3 ; save r3 b/c convert_xy tramples it
-
-
+    push r r3 ; contains letter ID
     call i convert_xy
-
     pop r r3
-    
 
 
-    ; start writing:
+    mov rr r0, r1
+    mov rr r1, r2
+    ; r0:r1 contains the byte we're modifying
+
+    ; now, r4-7 are free
     mov ri r4, hi(0x1600)
     mov ri r5, lo(0x1600)
-
     mul ri r3, 7
-    add rr r5, r3           ; get ptr aligned w/ correct letter
+    add rr r5, r3 ; align font ptr, also frees up r3
+
+    dbg m r4
+
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+
+    jmp i resume_prog_sys
+
+write_letter_in_place:
+    call i before_pixel_op
+
+    push r r3 ; contains letter ID
+    call i convert_xy
+    pop r r3
 
 
+    mov rr r0, r1
+    mov rr r1, r2
+    ; r0:r1 contains the byte we're modifying
 
-    call i next_writing_line
-    call i next_writing_line
-    call i next_writing_line
-    call i next_writing_line
-    call i next_writing_line
-    call i next_writing_line
-    call i next_writing_line
+    ; now, r4-7 are free
+    mov ri r4, hi(0x1600)
+    mov ri r5, lo(0x1600)
+    mul ri r3, 7
+    add rr r5, r3 ; align font ptr, also frees up r3
+
+    dbg m r4
+
+    call i next_line
+    or mr r0, r6
+    call i inc_r1_byte
+    or mr r0, r7
+    call i inc_r5
+
+    call i next_line
+    or mr r0, r6
+    call i inc_r1_byte
+    or mr r0, r7
+    call i inc_r5
+
+    call i next_line
+    or mr r0, r6
+    call i inc_r1_byte
+    or mr r0, r7
+    call i inc_r5
+
+    call i next_line
+    or mr r0, r6
+    call i inc_r1_byte
+    or mr r0, r7
+    call i inc_r5
+
+    call i next_line
+    or mr r0, r6
+    call i inc_r1_byte
+    or mr r0, r7
+    call i inc_r5
+
+    call i next_line
+    or mr r0, r6
+    call i inc_r1_byte
+    or mr r0, r7
+    call i inc_r5
 
     jmp i resume_prog_sys
 
 
-write_letter_in_place: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
-    call i before_pixel_op
 
-    ; in addition to before_pixel_op bound checks:
-    ; letters are 5x7, so ensure that they won't write into illegal mem:
+
+
+
+; write_letter: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
+;     call i before_pixel_op
+
+;     ; in addition to before_pixel_op bound checks:
+;     ; letters are 5x7, so ensure that they won't write into illegal mem:
     
-    ; compare r1 (x) to 127, jump if greater than to do nothing probably
-    ; cmp ri r1, 123  ; 128-5 = 123
-    ; jg i failed_pixel_op
+;     ; compare r1 (x) to 127, jump if greater than to do nothing probably
+;     ; cmp ri r1, 123  ; 128-5 = 123
+;     ; jg i failed_pixel_op
 
-    ; cmp ri r1, 5
-    ; jl i failed_pixel_op
+;     ; cmp ri r1, 5
+;     ; jl i failed_pixel_op
 
-    ; same with r2 (y)
-    ; cmp ri r2, 121 ; 128-7 = 121
-    ; jg i failed_pixel_op
+;     ; same with r2 (y)
+;     ; cmp ri r2, 121 ; 128-7 = 121
+;     ; jg i failed_pixel_op
 
-    ; now the main function:
+;     ; now the main function:
 
-    push r r3 ; save r3 b/c convert_xy tramples it
+;     push r r3 ; save r3 b/c convert_xy tramples it
 
 
-    call i convert_xy
+;     call i convert_xy
 
-    pop r r3
+;     pop r r3
     
 
 
-    ; start writing:
-    mov ri r4, hi(0x1600)
-    mov ri r5, lo(0x1600)
+;     ; start writing:
+;     mov ri r4, hi(0x1600) ; letters
+;     mov ri r5, lo(0x1600)
 
-    mul ri r3, 7
-    add rr r5, r3           ; get ptr aligned w/ correct letter
+;     mul ri r3, 7
+;     add rr r5, r3           ; get ptr aligned w/ correct letter
 
 
 
-    call i next_inplace_writing_line
-    call i next_inplace_writing_line
-    call i next_inplace_writing_line
-    call i next_inplace_writing_line
-    call i next_inplace_writing_line
-    call i next_inplace_writing_line
-    call i next_inplace_writing_line
+;     call i next_writing_line
+;     call i next_writing_line
+;     call i next_writing_line
+;     call i next_writing_line
+;     call i next_writing_line
+;     call i next_writing_line
+;     call i next_writing_line
 
-    jmp i resume_prog_sys
+;     jmp i resume_prog_sys
+
+
+; write_letter_in_place: ; starts at 0x1200; x is r1, y is r2, letter ID is r3
+;     call i before_pixel_op
+
+;     ; in addition to before_pixel_op bound checks:
+;     ; letters are 5x7, so ensure that they won't write into illegal mem:
+    
+;     ; compare r1 (x) to 127, jump if greater than to do nothing probably
+;     ; cmp ri r1, 123  ; 128-5 = 123
+;     ; jg i failed_pixel_op
+
+;     ; cmp ri r1, 5
+;     ; jl i failed_pixel_op
+
+;     ; same with r2 (y)
+;     ; cmp ri r2, 121 ; 128-7 = 121
+;     ; jg i failed_pixel_op
+
+;     ; now the main function:
+
+;     push r r3 ; save r3 b/c convert_xy tramples it
+
+
+;     call i convert_xy
+
+;     pop r r3
+    
+
+
+;     ; start writing:
+;     mov ri r4, hi(0x1600)
+;     mov ri r5, lo(0x1600)
+
+;     mul ri r3, 7
+;     add rr r5, r3           ; get ptr aligned w/ correct letter
+
+
+
+;     call i next_inplace_writing_line
+;     call i next_inplace_writing_line
+;     call i next_inplace_writing_line
+;     call i next_inplace_writing_line
+;     call i next_inplace_writing_line
+;     call i next_inplace_writing_line
+;     call i next_inplace_writing_line
+
+;     jmp i resume_prog_sys
 
 
 pixel_on_33:
