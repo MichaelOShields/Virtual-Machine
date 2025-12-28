@@ -874,6 +874,14 @@ impl Cpu {
         Ok(())
     }
 
+    fn op_andn(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+        let DoubleVal { a, b} = self.double_val(mode, reg, mem)?;
+
+        *a &= !b;
+
+        Ok(())
+    }
+
     fn op_not(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         match mode {
             0_u16 => {
@@ -1805,6 +1813,7 @@ impl Cpu {
             0b100_011_u16 => {self.op_gfls(mode, reg, mem)?; }, // get flags
             0b100_100_u16 => {self.op_sfls(mode, reg, mem)?; }, // set flags
             0b100_101_u16 => {self.op_sdb(mode, reg, mem)?; }, // SIMPLE DEBUG
+            0b100_110_u16 => {self.op_andn(mode, reg, mem)?; }, // SIMPLE DEBUG
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);

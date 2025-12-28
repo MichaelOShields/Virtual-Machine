@@ -6,7 +6,7 @@ mov ri r1, 64
 mov ri r2, 64
 
 
-.const "multiplier", 10
+.const "multiplier", 5
 
 
 call i on_sys
@@ -19,6 +19,9 @@ loop:
     ; set to waiting:
     mov ri r0, 5 ; syscall waiting for input key
     sys ; next, should only run if there's available input i believe
+
+
+
 
     call i check_key
 

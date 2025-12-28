@@ -570,6 +570,7 @@ impl Parser {
         ops.insert("and".to_string(), (OpKind::Double, OperandLength::Unsigned8));
         ops.insert("or".to_string(),  (OpKind::Double, OperandLength::Unsigned8));
         ops.insert("xor".to_string(), (OpKind::Double, OperandLength::Unsigned8));
+        ops.insert("andn".to_string(), (OpKind::Double, OperandLength::Unsigned8));
         ops.insert("not".to_string(), (OpKind::Single, OperandLength::Unsigned8));
 
         
@@ -1046,6 +1047,7 @@ impl Assembler {
             "gfls" => 0b100_011,
             "sfls" => 0b100_100,
             "sdb" => 0b100_101,
+            "andn" => 0b100_110,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });

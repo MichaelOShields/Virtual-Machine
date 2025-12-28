@@ -924,7 +924,8 @@ pixel_off:
 
 
     ; put r7 (final byte) into mem
-    xor mr r1, r3
+    mul ri r3, 3
+    andn mr r1, r3
 
     jmp i resume_prog_sys
 
