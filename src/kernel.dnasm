@@ -839,6 +839,25 @@ go_down_r1:
     jc i inc_r0
     ret
 
+next_line_writing:
+    call i next_line
+    mov mr r0, r6
+    call i inc_r1_byte
+    mov mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+    ret
+
+next_inplace_line_writing:
+    call i next_line
+    or mr r0, r6
+    call i inc_r1_byte
+    or mr r0, r7
+    call i inc_r5
+    call i go_down_r1
+    ret
+
+
 write_letter:
     call i before_pixel_op
 
@@ -857,56 +876,15 @@ write_letter:
     mul ri r3, 7
     add rr r5, r3 ; align font ptr, also frees up r3
 
-    dbg m r4
+    ; dbg m r4
 
-    call i next_line
-    mov mr r0, r6
-    call i inc_r1_byte
-    mov mr r0, r7
-    call i inc_r5
-    call i go_down_r1
-
-    call i next_line
-    mov mr r0, r6
-    call i inc_r1_byte
-    mov mr r0, r7
-    call i inc_r5
-    call i go_down_r1
-
-    call i next_line
-    mov mr r0, r6
-    call i inc_r1_byte
-    mov mr r0, r7
-    call i inc_r5
-    call i go_down_r1
-
-    call i next_line
-    mov mr r0, r6
-    call i inc_r1_byte
-    mov mr r0, r7
-    call i inc_r5
-    call i go_down_r1
-
-    call i next_line
-    mov mr r0, r6
-    call i inc_r1_byte
-    mov mr r0, r7
-    call i inc_r5
-    call i go_down_r1
-
-    call i next_line
-    mov mr r0, r6
-    call i inc_r1_byte
-    mov mr r0, r7
-    call i inc_r5
-    call i go_down_r1
-
-    call i next_line
-    mov mr r0, r6
-    call i inc_r1_byte
-    mov mr r0, r7
-    call i inc_r5
-    call i go_down_r1
+    call i next_line_writing
+    call i next_line_writing
+    call i next_line_writing
+    call i next_line_writing
+    call i next_line_writing
+    call i next_line_writing
+    call i next_line_writing
 
     jmp i resume_prog_sys
 
@@ -928,43 +906,15 @@ write_letter_in_place:
     mul ri r3, 7
     add rr r5, r3 ; align font ptr, also frees up r3
 
-    dbg m r4
+    ; dbg m r4
 
-    call i next_line
-    or mr r0, r6
-    call i inc_r1_byte
-    or mr r0, r7
-    call i inc_r5
-
-    call i next_line
-    or mr r0, r6
-    call i inc_r1_byte
-    or mr r0, r7
-    call i inc_r5
-
-    call i next_line
-    or mr r0, r6
-    call i inc_r1_byte
-    or mr r0, r7
-    call i inc_r5
-
-    call i next_line
-    or mr r0, r6
-    call i inc_r1_byte
-    or mr r0, r7
-    call i inc_r5
-
-    call i next_line
-    or mr r0, r6
-    call i inc_r1_byte
-    or mr r0, r7
-    call i inc_r5
-
-    call i next_line
-    or mr r0, r6
-    call i inc_r1_byte
-    or mr r0, r7
-    call i inc_r5
+    call i next_inplace_line_writing
+    call i next_inplace_line_writing
+    call i next_inplace_line_writing
+    call i next_inplace_line_writing
+    call i next_inplace_line_writing
+    call i next_inplace_line_writing
+    call i next_inplace_line_writing
 
     jmp i resume_prog_sys
 

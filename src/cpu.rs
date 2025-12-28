@@ -81,7 +81,7 @@ impl Cpu {
             mode: CPUMode::K,
             access: Access::X,
             instruction_ctr: 0,
-            instruction_lim: 50, // allow 50 instructions before returning control
+            instruction_lim: 100, // allow 50 instructions before returning control
             kernel_trap_address: trap_addr,
         }
     }

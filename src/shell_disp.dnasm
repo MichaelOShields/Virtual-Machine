@@ -29,7 +29,10 @@ starting:
     mov ri r1, 1
     mov ri r2, 1
     call i caret
-    call i render_output
+    push r r4
+    mov ri r4, 0
+    call i set_output
+    pop r r4
     jmp i loop
 
 loop:
@@ -214,16 +217,19 @@ enter:
     ; handle command
     call i full_check_shutdown
     call i full_check_panic
+    call i full_check_test
     
     ; if failed, display failed:
-    mov ri r4, 1
-    call i set_output
+    cmp ri r4, 1
     
     ret
 
 
 failed_check:
+    mov ri r4, 1
+    call i set_output
     ret
+
 full_check_shutdown:
     push r r3
     push r r4
@@ -245,6 +251,20 @@ full_check_panic:
     push r r6
     push r r7
     call i check_panic
+    pop r r7
+    pop r r6
+    pop r r5
+    pop r r4
+    pop r r3
+    ret
+
+full_check_test:
+    push r r3
+    push r r4
+    push r r5
+    push r r6
+    push r r7
+    call i check_test
     pop r r7
     pop r r6
     pop r r5
@@ -284,7 +304,7 @@ check_panic:
     mov ri r4, hi(0x5800) ; text buffer
     mov ri r5, lo(0x5800)
 
-    mov ri r6, hi(0x582B) ; shutdown string
+    mov ri r6, hi(0x582B)
     mov ri r7, lo(0x582B)
 
     jmp i ch_panic_loop
@@ -304,11 +324,41 @@ check_panic:
 
     ret
 
+check_test:
+
+    mov ri r4, hi(0x5800) ; text buffer
+    mov ri r5, lo(0x5800)
+
+    mov ri r6, hi(0x5840)
+    mov ri r7, lo(0x5840)
+
+    jmp i ch_test_loop
+
+    ch_test_loop:
+        mov ri r3, 255
+        cmp mr r6, r3
+        jz i command_test
+
+        mov rm r3, r6
+        cmp mr r4, r3
+        jnz i failed_check
+
+        add ri r5, 1
+        add ri r7, 1
+        jmp i ch_test_loop
+
+    ret
+
 
 command_panic:
     mov ri r4, 3
     call i set_output
     pnk
+
+command_test:
+    mov ri r4, 4
+    call i set_output
+    ret
 
 command_shutdown:
     mov ri r4, 2
@@ -489,6 +539,10 @@ unset_at_end:
 .str "kill"
 .byte 255
 
+.org 0x5840 ; test
+.str "test"
+.byte 255
+
 
 .org 0x5900 ; pre-written output strings. starts w/ check failed
 .str "default   output", 16
@@ -501,3 +555,6 @@ unset_at_end:
 
 .org 0x5930 ; 3
 .str "panicking", 16
+
+.org 0x5940 ; 4
+.str "abcdefghijklmnop", 16
