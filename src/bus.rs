@@ -223,6 +223,8 @@ impl Bus {
         let user_heap_6  = MemRange::UserHeap ( user_heap_6, 6);
         let user_stack_6 = MemRange::UserStack ( user_stack_6, 6);
 
+        let shared_data = MemRange::SharedData( shared_data );
+
         // let user_code_7  = MemRange::UserCode ( user_code_7, 7);
         // let user_data_7  = MemRange::UserData ( user_data_7, 7);
         // let user_heap_7  = MemRange::UserHeap ( user_heap_7, 7);
@@ -246,6 +248,7 @@ impl Bus {
             user_code_4,  user_data_4,  user_heap_4,  user_stack_4,
             user_code_5,  user_data_5,  user_heap_5,  user_stack_5,
             user_code_6,  user_data_6,  user_heap_6,  user_stack_6,
+            shared_data,
             // user_code_7,  user_data_7,  user_heap_7,  user_stack_7,
         ];
 
@@ -289,7 +292,7 @@ impl Bus {
                     Err(e) => {
                         println!("Got CPUExit {:?} at range {:?} (0x{:0x}..0x{:0x})", e, range, actual_range.start, actual_range.end);
                         println!("Mode: {:?}\nAccess: {:?}", mode, access);
-                        println!("Attempted to access address 0x{:0x}", address);
+                        println!("Attempted to access address 0x{:0x}\n", address);
                     }
                 }
                 return result;

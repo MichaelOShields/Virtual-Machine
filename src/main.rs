@@ -281,10 +281,10 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
             
         }
 
-        match fs::write(file_path + "_out.txt", output) {
-            Ok(()) => (),
-            Err(e) => {panic!("Unable to write file with error {:?}", e);},
-        };
+        // match fs::write(file_path + "_out.txt", output) {
+        //     Ok(()) => (),
+        //     Err(e) => {panic!("Unable to write file with error {:?}", e);},
+        // };
     }
     else if let Err(e) = assembled {
         panic!("Assembler Error: {:?}", e);
@@ -439,6 +439,8 @@ fn main() {
     load_assembly(&mut memory, "src\\mouse".to_string());
 
     load_assembly(&mut memory, "src\\shell_disp".to_string());
+
+    load_assembly(&mut memory, "src\\shared".to_string());
     
 
     let vm  = Vm::new(memory, vc, cpu);

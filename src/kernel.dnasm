@@ -2,7 +2,7 @@
 
 
 
-kernel: ; round-robin scheduler
+kernel:
 
 
 
@@ -45,7 +45,7 @@ kernel: ; round-robin scheduler
         add rr r5, r3
         add ri r0, 1 ; keep current_task register up-to-date w/ indexed task state byte
 
-        cmp ri r0, 8
+        cmp ri r0, 7
         jz i reset_r0
 
         after_reset:
@@ -820,8 +820,8 @@ write_letter:
     ; r0:r1 contains the byte we're modifying
 
     ; now, r4-7 are free
-    mov ri r4, hi(0x1600)
-    mov ri r5, lo(0x1600)
+    mov ri r4, hi(0xE000)
+    mov ri r5, lo(0xE000)
     mul ri r3, 7
     add rr r5, r3 ; align font ptr, also frees up r3
 
@@ -850,8 +850,8 @@ write_letter_in_place:
     ; r0:r1 contains the byte we're modifying
 
     ; now, r4-7 are free
-    mov ri r4, hi(0x1600)
-    mov ri r5, lo(0x1600)
+    mov ri r4, hi(0xE000)
+    mov ri r5, lo(0xE000)
     mul ri r3, 7
     add rr r5, r3 ; align font ptr, also frees up r3
 
@@ -872,11 +872,8 @@ pixel_on_33:
 
     call i before_pixel_op
 
-    
-    
     call i convert_xy
     ; now r1 = high byte, r2 = low byte, x = r4, y = r5, r3 = byte pixel
-
     
     ; OR operation - only turn on the specific pixel
 
@@ -887,7 +884,6 @@ pixel_on_33:
     div ri r3, 3
 
     or mr r1, r3
-
 
     jmp i resume_prog_sys
 
