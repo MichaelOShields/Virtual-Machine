@@ -1,4 +1,4 @@
-.org 0x1000
+.abs 0x1000
 
 dbg i 67
 hlt

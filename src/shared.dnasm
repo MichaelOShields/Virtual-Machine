@@ -1,5 +1,5 @@
 ; shared data
-.org 0xE000
+.abs 0xE000
 letters:
     ; 196 bytes of letters
     ; symbol: space
@@ -289,3 +289,8 @@ letters:
     ; .byte 0b00001_000
     ; .byte 0b00001_000
 ;
+
+.abs 0xE100
+
+
+; functions (must add .rel and .abs in assembler first)

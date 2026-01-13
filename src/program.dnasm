@@ -1,4 +1,4 @@
-.org 0x400
+.abs 0x400
 
 
 mov ri r0, 8

@@ -1,4 +1,4 @@
-.org 0x400
+.abs 0x400
 
 
 
@@ -674,7 +674,7 @@ inc_r0:
     ret
 
 next_line:
-    ; need to do some fancy shit
+    ; need to do some fancy stuff
     call i get_current_line ; get current letter line
 
     ; r6, r7 are free.
@@ -948,7 +948,7 @@ pixel_off:
 
 ; KERNEL TRAP:
 
-.org 0x1000 ; kernel trap
+.abs 0x1000 ; kernel trap
 
 
 

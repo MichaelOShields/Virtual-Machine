@@ -3,7 +3,7 @@
 
 ; kernel info: @0x12C5
 
-.org 0x12C5
+.abs 0x12C5
 
 ; kernel SP: (formerly 1250)
 
@@ -11,12 +11,12 @@
 .byte 0xFF
 
 
-.org 0x12C7 ; exit info (formerly 125A)
+.abs 0x12C7 ; exit info (formerly 125A)
 .byte 0 ; reason
 
 
 
-.org 0x12C8 ; task admin resources (formerly 1260)
+.abs 0x12C8 ; task admin resources (formerly 1260)
 .byte 0 ; CURRENT TASK INDEX
 
 
@@ -62,7 +62,7 @@
 
 
 
-.org 0x17FF
+.abs 0x17FF
 ; 0x19FF is the location of the key buffer
 .byte 0
 

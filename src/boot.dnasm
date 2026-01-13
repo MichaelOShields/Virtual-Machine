@@ -1,4 +1,4 @@
-.org 0x00
+.abs 0x00
 
 
 ; mov ri r0, 0x23

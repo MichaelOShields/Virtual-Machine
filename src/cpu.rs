@@ -624,12 +624,7 @@ impl Cpu {
         self.mode = CPUMode::U;
 
         self.access = Access::X;
-
-
         // println!("-----------------------------------------------------------------------------------------------------------------------");
-
-
-
         Ok(())
 
     }
@@ -720,11 +715,7 @@ impl Cpu {
                 let r = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
 
                 let r_i: i8 = (*r as i8) >> 1;
-
-
-
-
-
+                
                 *r = r_i as u8;
 
                 self.increment_pc(2);
@@ -1087,7 +1078,6 @@ impl Cpu {
             0b111_111 => "hlt",
             _ => panic!("Received invalid instruction {:08b}", op),
         }.to_string()
-
     }
 
 

@@ -1,13 +1,13 @@
-.org 0x1300 ; handling user programs/states
+.abs 0x1300 ; handling user programs/states
 
 
 ; USER 0 - MOUSE
 
-.org 0x1300          ; user 0 SP
+.abs 0x1300          ; user 0 SP
 .byte 0x4F
 .byte 0xFF
 
-.org 0x1302          ; user 0 regs (r0–r7)
+.abs 0x1302          ; user 0 regs (r0–r7)
 .byte 0
 .byte 0
 .byte 0
@@ -17,13 +17,13 @@
 .byte 0
 .byte 0
 
-.org 0x130A          ; user 0 flags (4 bytes)
+.abs 0x130A          ; user 0 flags (4 bytes)
 .byte 0
 .byte 0
 .byte 0
 .byte 0
 
-.org 0x130E
+.abs 0x130E
 ; user program 0 runnable state
 ; 
 ; 0 means "not runnable",
@@ -36,11 +36,11 @@
 
 
 
-.org 0x130F          ; user 0 PC
+.abs 0x130F          ; user 0 PC
 .byte 0x38
 .byte 0x00
 
-.org 0x1311
+.abs 0x1311
 
 ; first byte is the waiting reason:
 ; 0 means waiting for no reason (idk why it'd be like that, might want to make it like a safe exit/pause or smth later),
@@ -53,7 +53,7 @@
 .byte 0
 
 
-.org 0x1312
+.abs 0x1312
 ; program ring: 0 means kernel (can do anything), 1 means trusted application (generally loaded on image, think mouse or shell), 2 means user application
 .byte 1
 
@@ -67,11 +67,11 @@
 
 ; USER 1 - SHELL
 
-.org 0x1319
+.abs 0x1319
 .byte 0x67
 .byte 0xFF
 
-.org 0x131B
+.abs 0x131B
 .byte 0
 .byte 0
 .byte 0
@@ -81,20 +81,20 @@
 .byte 0
 .byte 0
 
-.org 0x1323
+.abs 0x1323
 .byte 0
 .byte 0
 .byte 0
 .byte 0
 
-.org 0x1327
+.abs 0x1327
 .byte 1
 
-.org 0x1328
+.abs 0x1328
 .byte 0x50
 .byte 0x00
 
-.org 0x132A
+.abs 0x132A
 .byte 0
 .byte 1
 .byte 0
@@ -108,11 +108,11 @@
 
 ; USER 2
 
-.org 0x1332
+.abs 0x1332
 .byte 0x7F
 .byte 0xFF
 
-.org 0x1334
+.abs 0x1334
 .byte 0
 .byte 0
 .byte 0
@@ -122,20 +122,20 @@
 .byte 0
 .byte 0
 
-.org 0x133C
+.abs 0x133C
 .byte 0
 .byte 0
 .byte 0
 .byte 0
 
-.org 0x1340
+.abs 0x1340
 .byte 0
 
-.org 0x1341
+.abs 0x1341
 .byte 0x68
 .byte 0x00
 
-.org 0x1343
+.abs 0x1343
 .byte 0
 .byte 2
 .byte 0
@@ -149,11 +149,11 @@
 
 ; USER 3
 
-.org 0x134B
+.abs 0x134B
 .byte 0x97
 .byte 0xFF
 
-.org 0x134D
+.abs 0x134D
 .byte 0
 .byte 0
 .byte 0
@@ -163,20 +163,20 @@
 .byte 0
 .byte 0
 
-.org 0x1355
+.abs 0x1355
 .byte 0
 .byte 0
 .byte 0
 .byte 0
 
-.org 0x1359
+.abs 0x1359
 .byte 0
 
-.org 0x135A
+.abs 0x135A
 .byte 0x80
 .byte 0x00
 
-.org 0x135C
+.abs 0x135C
 .byte 0
 .byte 2
 .byte 0
@@ -190,11 +190,11 @@
 
 ; USER 4
 
-.org 0x1364
+.abs 0x1364
 .byte 0xAF
 .byte 0xFF
 
-.org 0x1366
+.abs 0x1366
 .byte 0
 .byte 0
 .byte 0
@@ -204,20 +204,20 @@
 .byte 0
 .byte 0
 
-.org 0x136E
+.abs 0x136E
 .byte 0
 .byte 0
 .byte 0
 .byte 0
 
-.org 0x1372
+.abs 0x1372
 .byte 0
 
-.org 0x1373
+.abs 0x1373
 .byte 0x98
 .byte 0x00
 
-.org 0x1375
+.abs 0x1375
 .byte 0
 .byte 2
 .byte 0
@@ -231,11 +231,11 @@
 
 ; USER 5
 
-.org 0x137D
+.abs 0x137D
 .byte 0xC7
 .byte 0xFF
 
-.org 0x137F
+.abs 0x137F
 .byte 0
 .byte 0
 .byte 0
@@ -245,20 +245,20 @@
 .byte 0
 .byte 0
 
-.org 0x1387
+.abs 0x1387
 .byte 0
 .byte 0
 .byte 0
 .byte 0
 
-.org 0x138B
+.abs 0x138B
 .byte 0
 
-.org 0x138C
+.abs 0x138C
 .byte 0xB0
 .byte 0x00
 
-.org 0x138E
+.abs 0x138E
 .byte 0
 .byte 2
 .byte 0
@@ -272,11 +272,11 @@
 
 ; USER 6
 
-.org 0x1396
+.abs 0x1396
 .byte 0xDF
 .byte 0xFF
 
-.org 0x1398
+.abs 0x1398
 .byte 0
 .byte 0
 .byte 0
@@ -286,20 +286,20 @@
 .byte 0
 .byte 0
 
-.org 0x13A0
+.abs 0x13A0
 .byte 0
 .byte 0
 .byte 0
 .byte 0
 
-.org 0x13A4
+.abs 0x13A4
 .byte 0
 
-.org 0x13A5
+.abs 0x13A5
 .byte 0xC8
 .byte 0x00
 
-.org 0x13A7
+.abs 0x13A7
 .byte 0
 .byte 2
 .byte 0
@@ -313,11 +313,11 @@
 
 ; USER 7
 
-; .org 0x13AF
+; .abs 0x13AF
 ; .byte 0xF7
 ; .byte 0xFF
 
-; .org 0x13B1
+; .abs 0x13B1
 ; .byte 0
 ; .byte 0
 ; .byte 0
@@ -327,20 +327,20 @@
 ; .byte 0
 ; .byte 0
 
-; .org 0x13B9
+; .abs 0x13B9
 ; .byte 0
 ; .byte 0
 ; .byte 0
 ; .byte 0
 
-; .org 0x13BD
+; .abs 0x13BD
 ; .byte 0
 
-; .org 0x13BE
+; .abs 0x13BE
 ; .byte 0xE0
 ; .byte 0x00
 
-; .org 0x13C0
+; .abs 0x13C0
 ; .byte 0
 ; .byte 2
 ; .byte 0

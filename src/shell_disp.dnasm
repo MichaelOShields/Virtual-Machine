@@ -1,4 +1,4 @@
-.org 0x5000
+.abs 0x5000
 
 
 ; shell setup:
@@ -584,55 +584,55 @@ unset_at_end:
 .const "symbol_caret", 27
 .const "symbol_endcaret", 28
 
-.org 0x5800 ; 0x5800-0x580F are reserved for the typing buffer (only 15 letters fit on the screen, so that's the max)
+.abs 0x5800 ; 0x5800-0x580F are reserved for the typing buffer (only 15 letters fit on the screen, so that's the max)
 .byte 0
 
 
-.org 0x5810 ; 0x5810-0x581F are reserved for the output buffer
+.abs 0x5810 ; 0x5810-0x581F are reserved for the output buffer
 .byte 0
 
 
-.org 0x5820 ; 0x5820 is reserved for the "at-end-of-line" boolean
+.abs 0x5820 ; 0x5820 is reserved for the "at-end-of-line" boolean
 .byte 0
 
 
 ; commands start at 0x5821
-.org 0x5821 ; shutdown
+.abs 0x5821 ; shutdown
 .str "shutdown"
 
 .byte 255
 
-.org 0x582B ; panic
+.abs 0x582B ; panic
 .str "panic"
 .byte 255
 
-.org 0x5833 ; spawn
+.abs 0x5833 ; spawn
 .str "spawn"
 .byte 255
 
-.org 0x583B ; kill
+.abs 0x583B ; kill
 .str "kill"
 .byte 255
 
-.org 0x5840 ; test
+.abs 0x5840 ; test
 .str "test"
 .byte 255
 
 
-.org 0x5900 ; pre-written output strings. starts w/ check failed
+.abs 0x5900 ; pre-written output strings. starts w/ check failed
 .str "default   output", 16
 
-.org 0x5910 ; 1
+.abs 0x5910 ; 1
 .str "cmd not found", 16
 
-.org 0x5920 ; 2
+.abs 0x5920 ; 2
 .str "shutting down", 16
 
-.org 0x5930 ; 3
+.abs 0x5930 ; 3
 .str "panicking", 16
 
-.org 0x5940 ; 4
+.abs 0x5940 ; 4
 .str "abcdefghijklmnop", 16
 
-.org 0x59FF ; "focused" boolean
+.abs 0x59FF ; "focused" boolean
 .byte 1

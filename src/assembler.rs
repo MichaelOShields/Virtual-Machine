@@ -1573,9 +1573,9 @@ impl Assembler {
 
     fn parse_signal(&mut self, name: String, args: Vec<Expr>) -> Result<Vec<u8>, AssemblerError> {
         let mut returner: Vec<u8> = vec![];
-        if name == "org" {
+        if name == "abs" {
             if args.len() != 1 {
-                return Err(AssemblerError { message: "org signal arg count incorrect".to_string() });
+                return Err(AssemblerError { message: "abs signal arg count incorrect".to_string() });
             }
             else {
                 let new_pos = match &args[0] {
@@ -1588,7 +1588,7 @@ impl Assembler {
                         NumExpr::BinaryOperation { a, operand, b } => self.eval_num_bin_op(*a.clone(), operand.clone(), *b.clone())? as u16,
 
                     },
-                    _ => return Err(AssemblerError { message: "org signal received incorrect arg".to_string() })
+                    _ => return Err(AssemblerError { message: "abs signal received incorrect arg".to_string() })
                 };
                 self.pc = new_pos;
                 self.current_pos = new_pos;
