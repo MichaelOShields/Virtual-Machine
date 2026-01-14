@@ -1095,45 +1095,6 @@ impl Assembler {
         return Ok((m1, m2));
     }
 
-    // fn mem_to_reg_from_operand(&mut self, mem: Operand) -> Result<(u8, Vec<u8>, Vec<u8>), AssemblerError> { // result is register to grab mem addr, first vec<u8> is just loading the mem addr into R6 and R7, second vec<u8> is restoring R6 and R7
-    //     let reg: u8 = 6;
-    //     let mut setup: Vec<u8> = vec![];
-    //     let mut cleanup: Vec<u8> = vec![];
-    //     match mem {
-    //         Operand::Immediate(e) => match e {
-    //             Expr::Num(numex) => {
-    //                 let savereg6: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
-    //                 let savereg7: Stmt = Stmt::SingleOperation { opid: "push".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
-    //                 let mut loadingreg6 = self.assemble_single_op(savereg6)?;
-    //                 let mut loadingreg7 = self.assemble_single_op(savereg7)?;
-    //                 setup.append(&mut loadingreg6);
-    //                 setup.append(&mut loadingreg7);
-    //                 let (m1, m2) = self.get_addr_from_numexpr(numex)?;
-    //                 let movem1toreg6stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(6), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m1 as i64))), operand_length: OperandLength::Unsigned8 };
-    //                 let movem2toreg7stmt = Stmt::DoubleOperation { opid: "mov".to_string(), mode: DoubleMode::Ri, dest: Operand::Register(7), src: Operand::Immediate(Expr::Num(NumExpr::Raw(m2 as i64))), operand_length: OperandLength::Unsigned8 };
-    //                 let mut loadingm1 = self.assemble_double_op(movem1toreg6stmt)?;
-    //                 let mut loadingm2 = self.assemble_double_op(movem2toreg7stmt)?;
-    //                 setup.append(&mut loadingm1);
-    //                 setup.append(&mut loadingm2);
-
-    //                 let loadreg6: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(6), operand_length: OperandLength::Unsigned8 };
-    //                 let loadreg7: Stmt = Stmt::SingleOperation { opid: "pop".to_string(), mode: SingleMode::R, operand: Operand::Register(7), operand_length: OperandLength::Unsigned8 };
-    //                 let mut loadingpopreg6 = self.assemble_single_op(loadreg6)?;
-    //                 let mut loadingpopreg7 = self.assemble_single_op(loadreg7)?;
-    //                 cleanup.append(&mut loadingpopreg7);
-    //                 cleanup.append(&mut loadingpopreg6);
-
-
-
-    //                 return Ok((reg, setup, cleanup));
-    //             },
-    //             _ => return Err(AssemblerError { message: "Received unexpected immediate operand expression type.".to_string() })
-    //         },
-    //         Operand::Register(n) => {return Ok((n, vec![], vec![]))},
-    //     };
-
-    // }
-
     fn set_pc(&mut self, new_pc: u16) {
         self.pc = new_pc;
     }
@@ -1540,7 +1501,11 @@ impl Assembler {
                 return Ok(self.eval_expr(Expr::Num(a))? + self.eval_expr(Expr::Num(b))?);
             },
             BinaryOp::Div => {
-                return Ok(self.eval_expr(Expr::Num(a))? / self.eval_expr(Expr::Num(b))?);
+                let divisor = self.eval_expr(Expr::Num(b))?;
+                if divisor == 0 {
+                    return Err(AssemblerError { message: "Division by zero".to_string() });
+                }
+                Ok(self.eval_expr(Expr::Num(a))? / divisor)
             },
             BinaryOp::Mul => {
                 return Ok(self.eval_expr(Expr::Num(a))? * self.eval_expr(Expr::Num(b))?);

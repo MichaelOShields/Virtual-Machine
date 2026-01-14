@@ -83,7 +83,7 @@ impl MemRange {
             Self::SharedData (_) => {
                 // println!("t (code): {}", t);
                 (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
-                (mode == CPUMode::U && matches!(access, Access::R))
+                (mode == CPUMode::U && matches!(access, Access::R | Access::X))
             },
 
             _ => panic!("Couldn't identify memory range."),
