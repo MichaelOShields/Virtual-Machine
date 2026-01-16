@@ -1,4 +1,5 @@
-.abs 0x3800
+.start
+; .abs 0x3800
 
 
 ; init x, y as 64, 64

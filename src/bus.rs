@@ -17,6 +17,7 @@ pub enum MemRange {
     UserData ( Range<u16>, u8 ),
     UserHeap ( Range<u16>, u8 ),
     UserStack ( Range<u16>, u8 ),
+    UserVram ( Range<u16>, u8 ),
 
     SharedData ( Range<u16> ),
 }
@@ -44,6 +45,7 @@ impl MemRange {
             | MemRange::UserData(r, _)
             | MemRange::UserHeap(r, _)
             | MemRange::UserStack(r, _)
+            | MemRange::UserVram(r, _)
             | MemRange::SharedData (r)
             => r.contains(&addr),
         }
@@ -75,6 +77,12 @@ impl MemRange {
                 (mode == CPUMode::U && matches!(access, Access::R | Access::W) && (*t == current_task)),
 
             Self::UserStack(_, t) => 
+                {
+                    // println!("t (stack): {}", t);
+                    (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
+                    (mode == CPUMode::U && matches!(access, Access::R | Access::W) && (*t == current_task))},
+
+            Self::UserVram(_, t) => 
                 {
                     // println!("t (stack): {}", t);
                     (mode == CPUMode::K && matches!(access, Access::R | Access::W)) || 
@@ -138,43 +146,51 @@ impl Bus {
         user_code_0:  Range<u16>,
         user_data_0:  Range<u16>,
         user_heap_0:  Range<u16>,
+        user_vram_0:  Range<u16>,
         user_stack_0: Range<u16>,
 
         user_code_1:  Range<u16>,
         user_data_1:  Range<u16>,
         user_heap_1:  Range<u16>,
+        user_vram_1:  Range<u16>,
         user_stack_1: Range<u16>,
 
         user_code_2:  Range<u16>,
         user_data_2:  Range<u16>,
         user_heap_2:  Range<u16>,
+        user_vram_2:  Range<u16>,
         user_stack_2: Range<u16>,
 
         user_code_3:  Range<u16>,
         user_data_3:  Range<u16>,
         user_heap_3:  Range<u16>,
+        user_vram_3:  Range<u16>,
         user_stack_3: Range<u16>,
 
-        user_code_4:  Range<u16>,
-        user_data_4:  Range<u16>,
-        user_heap_4:  Range<u16>,
-        user_stack_4: Range<u16>,
+        // user_code_4:  Range<u16>,
+        // user_data_4:  Range<u16>,
+        // user_heap_4:  Range<u16>,
+        // user_vram_4:  Range<u16>,
+        // user_stack_4: Range<u16>,
 
-        user_code_5:  Range<u16>,
-        user_data_5:  Range<u16>,
-        user_heap_5:  Range<u16>,
-        user_stack_5: Range<u16>,
+        // user_code_5:  Range<u16>,
+        // user_data_5:  Range<u16>,
+        // user_heap_5:  Range<u16>,
+        // user_vram_5:  Range<u16>,
+        // user_stack_5: Range<u16>,
 
-        user_code_6:  Range<u16>,
-        user_data_6:  Range<u16>,
-        user_heap_6:  Range<u16>,
-        user_stack_6: Range<u16>,
+        // user_code_6:  Range<u16>,
+        // user_data_6:  Range<u16>,
+        // user_heap_6:  Range<u16>,
+        // user_vram_6:  Range<u16>,
+        // user_stack_6: Range<u16>,
 
         shared_data: Range<u16>,
 
         // user_code_7:  Range<u16>,
         // user_data_7:  Range<u16>,
         // user_heap_7:  Range<u16>,
+        // user_vram_7:  Range<u16>,
         // user_stack_7: Range<u16>,
 
     ) -> Self {
@@ -191,37 +207,44 @@ impl Bus {
         let user_code_0  = MemRange::UserCode ( user_code_0, 0);
         let user_data_0  = MemRange::UserData ( user_data_0, 0);
         let user_heap_0  = MemRange::UserHeap ( user_heap_0, 0);
+        let user_vram_0  = MemRange::UserVram ( user_vram_0, 0);
         let user_stack_0 = MemRange::UserStack ( user_stack_0, 0);
 
         let user_code_1  = MemRange::UserCode ( user_code_1, 1);
         let user_data_1  = MemRange::UserData ( user_data_1, 1);
         let user_heap_1  = MemRange::UserHeap ( user_heap_1, 1);
+        let user_vram_1  = MemRange::UserVram ( user_vram_1, 1);
         let user_stack_1 = MemRange::UserStack ( user_stack_1, 1);
 
         let user_code_2  = MemRange::UserCode ( user_code_2, 2);
         let user_data_2  = MemRange::UserData ( user_data_2, 2);
         let user_heap_2  = MemRange::UserHeap ( user_heap_2, 2);
+        let user_vram_2  = MemRange::UserVram ( user_vram_2, 2);
         let user_stack_2 = MemRange::UserStack ( user_stack_2, 2);
 
         let user_code_3  = MemRange::UserCode ( user_code_3, 3);
         let user_data_3  = MemRange::UserData ( user_data_3, 3);
         let user_heap_3  = MemRange::UserHeap ( user_heap_3, 3);
+        let user_vram_3  = MemRange::UserVram ( user_vram_3, 3);
         let user_stack_3 = MemRange::UserStack ( user_stack_3, 3);
 
-        let user_code_4  = MemRange::UserCode ( user_code_4, 4);
-        let user_data_4  = MemRange::UserData ( user_data_4, 4);
-        let user_heap_4  = MemRange::UserHeap ( user_heap_4, 4);
-        let user_stack_4 = MemRange::UserStack ( user_stack_4, 4);
+        // let user_code_4  = MemRange::UserCode ( user_code_4, 4);
+        // let user_data_4  = MemRange::UserData ( user_data_4, 4);
+        // let user_heap_4  = MemRange::UserHeap ( user_heap_4, 4);
+        // let user_vram_4  = MemRange::UserVram ( user_vram_4, 4);
+        // let user_stack_4 = MemRange::UserStack ( user_stack_4, 4);
 
-        let user_code_5  = MemRange::UserCode ( user_code_5, 5);
-        let user_data_5  = MemRange::UserData ( user_data_5, 5);
-        let user_heap_5  = MemRange::UserHeap ( user_heap_5, 5);
-        let user_stack_5 = MemRange::UserStack ( user_stack_5, 5);
+        // let user_code_5  = MemRange::UserCode ( user_code_5, 5);
+        // let user_data_5  = MemRange::UserData ( user_data_5, 5);
+        // let user_heap_5  = MemRange::UserHeap ( user_heap_5, 5);
+        // let user_vram_5  = MemRange::UserVram ( user_vram_5, 5);
+        // let user_stack_5 = MemRange::UserStack ( user_stack_5, 5);
 
-        let user_code_6  = MemRange::UserCode ( user_code_6, 6);
-        let user_data_6  = MemRange::UserData ( user_data_6, 6);
-        let user_heap_6  = MemRange::UserHeap ( user_heap_6, 6);
-        let user_stack_6 = MemRange::UserStack ( user_stack_6, 6);
+        // let user_code_6  = MemRange::UserCode ( user_code_6, 6);
+        // let user_data_6  = MemRange::UserData ( user_data_6, 6);
+        // let user_heap_6  = MemRange::UserHeap ( user_heap_6, 6);
+        // let user_vram_6  = MemRange::UserVram ( user_vram_6, 6);
+        // let user_stack_6 = MemRange::UserStack ( user_stack_6, 6);
 
         let shared_data = MemRange::SharedData( shared_data );
 
@@ -245,9 +268,9 @@ impl Bus {
             user_code_1,  user_data_1,  user_heap_1,  user_stack_1,
             user_code_2,  user_data_2,  user_heap_2,  user_stack_2,
             user_code_3,  user_data_3,  user_heap_3,  user_stack_3,
-            user_code_4,  user_data_4,  user_heap_4,  user_stack_4,
-            user_code_5,  user_data_5,  user_heap_5,  user_stack_5,
-            user_code_6,  user_data_6,  user_heap_6,  user_stack_6,
+            // user_code_4,  user_data_4,  user_heap_4,  user_stack_4,
+            // user_code_5,  user_data_5,  user_heap_5,  user_stack_5,
+            // user_code_6,  user_data_6,  user_heap_6,  user_stack_6,
             shared_data,
             // user_code_7,  user_data_7,  user_heap_7,  user_stack_7,
         ];
@@ -281,6 +304,7 @@ impl Bus {
                 | MemRange::UserCode(r, _)
                 | MemRange::UserData(r, _)
                 | MemRange::UserHeap(r, _)
+                | MemRange::UserVram(r, _)
                 | MemRange::UserStack(r, _)
                 | MemRange::SharedData(r) => r,
             };

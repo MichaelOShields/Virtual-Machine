@@ -1,11 +1,10 @@
-.abs 0x00
-
+.start
 
 ; mov ri r0, 0x23
 ; mov ri r1, 0xFF
 ; ssp r r0 ; kernel stack pointer
 
-ssp m 0x12C5 ; LOAD KSP
+ssp m abs(0x12C5) ; LOAD KSP
 
 
 jmp i 0x400

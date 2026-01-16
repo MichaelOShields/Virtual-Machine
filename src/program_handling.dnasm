@@ -1,10 +1,11 @@
+.start
 .abs 0x1300 ; handling user programs/states
 
 
 ; USER 0 - MOUSE
 
 .abs 0x1300          ; user 0 SP
-.byte 0x4F
+.byte 0x5F
 .byte 0xFF
 
 .abs 0x1302          ; user 0 regs (r0–r7)
@@ -68,7 +69,7 @@
 ; USER 1 - SHELL
 
 .abs 0x1319
-.byte 0x67
+.byte 0x87
 .byte 0xFF
 
 .abs 0x131B
@@ -91,7 +92,7 @@
 .byte 1
 
 .abs 0x1328
-.byte 0x50
+.byte 0x60
 .byte 0x00
 
 .abs 0x132A
@@ -109,7 +110,7 @@
 ; USER 2
 
 .abs 0x1332
-.byte 0x7F
+.byte 0xAF
 .byte 0xFF
 
 .abs 0x1334
@@ -132,7 +133,7 @@
 .byte 0
 
 .abs 0x1341
-.byte 0x68
+.byte 0x88
 .byte 0x00
 
 .abs 0x1343
@@ -150,7 +151,7 @@
 ; USER 3
 
 .abs 0x134B
-.byte 0x97
+.byte 0xD7
 .byte 0xFF
 
 .abs 0x134D
@@ -173,7 +174,7 @@
 .byte 0
 
 .abs 0x135A
-.byte 0x80
+.byte 0xB0
 .byte 0x00
 
 .abs 0x135C
@@ -190,124 +191,124 @@
 
 ; USER 4
 
-.abs 0x1364
-.byte 0xAF
-.byte 0xFF
+; .abs 0x1364
+; .byte 0xAF
+; .byte 0xFF
 
-.abs 0x1366
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
+; .abs 0x1366
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
 
-.abs 0x136E
-.byte 0
-.byte 0
-.byte 0
-.byte 0
+; .abs 0x136E
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
 
-.abs 0x1372
-.byte 0
+; .abs 0x1372
+; .byte 0
 
-.abs 0x1373
-.byte 0x98
-.byte 0x00
+; .abs 0x1373
+; .byte 0x98
+; .byte 0x00
 
-.abs 0x1375
-.byte 0
-.byte 2
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-
-
-
-; USER 5
-
-.abs 0x137D
-.byte 0xC7
-.byte 0xFF
-
-.abs 0x137F
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-
-.abs 0x1387
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-
-.abs 0x138B
-.byte 0
-
-.abs 0x138C
-.byte 0xB0
-.byte 0x00
-
-.abs 0x138E
-.byte 0
-.byte 2
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
+; .abs 0x1375
+; .byte 0
+; .byte 2
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
 
 
 
-; USER 6
+; ; USER 5
 
-.abs 0x1396
-.byte 0xDF
-.byte 0xFF
+; .abs 0x137D
+; .byte 0xC7
+; .byte 0xFF
 
-.abs 0x1398
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
+; .abs 0x137F
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
 
-.abs 0x13A0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
+; .abs 0x1387
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
 
-.abs 0x13A4
-.byte 0
+; .abs 0x138B
+; .byte 0
 
-.abs 0x13A5
-.byte 0xC8
-.byte 0x00
+; .abs 0x138C
+; .byte 0xB0
+; .byte 0x00
 
-.abs 0x13A7
-.byte 0
-.byte 2
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
-.byte 0
+; .abs 0x138E
+; .byte 0
+; .byte 2
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+
+
+
+; ; USER 6
+
+; .abs 0x1396
+; .byte 0xDF
+; .byte 0xFF
+
+; .abs 0x1398
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+
+; .abs 0x13A0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+
+; .abs 0x13A4
+; .byte 0
+
+; .abs 0x13A5
+; .byte 0xC8
+; .byte 0x00
+
+; .abs 0x13A7
+; .byte 0
+; .byte 2
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
+; .byte 0
 
 
 

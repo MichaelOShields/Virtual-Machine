@@ -1,5 +1,7 @@
 ; shared data
-.abs 0xE000
+.start
+
+
 letters:
     ; 196 bytes of letters
     ; symbol: space

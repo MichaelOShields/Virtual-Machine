@@ -244,7 +244,7 @@ impl ApplicationHandler for App {
 // const LEXING: bool = false; // debugging lexer
 
 
-fn load_assembly(memory: &mut Bus, file_path: String) {
+fn load_assembly(memory: &mut Bus, file_path: String, start_pos: Option<u16>) {
 
     let mut output: String = String::new();
 
@@ -256,12 +256,12 @@ fn load_assembly(memory: &mut Bus, file_path: String) {
 
     let lex: Lexer = Lexer::new(&code);
 
-    let mut parser: Parser = Parser::new(lex);
+    let mut parser: Parser = Parser::new(lex, file_path);
 
     let mut assembler = Assembler::new(match parser.parse() {
         Ok(p) => p,
         Err(e) => {panic!("Assembler Error: {:?}", e);},
-    });
+    }, start_pos);
     let assembled = assembler.assemble();
 
     
@@ -313,7 +313,7 @@ fn main() {
     let kernel_stack = 0x2000..0x2400;
 
     // reserved (not passed into Bus::new directly)
-    let vram         = 0x2400..0x3400; // 4 KB, currently only using 0x2400-0x2900(?)
+    let vram         = 0x2400..0x3400; // 4 KB
 
     let mmio         = 0x3400..0x3800; // 1 KB
 
@@ -321,41 +321,29 @@ fn main() {
     // differentiate tasks for memory safety
     let user_code_0  = 0x3800..0x4000;
     let user_data_0  = 0x4000..0x4200;
-    let user_heap_0  = 0x4200..0x4C00;
-    let user_stack_0 = 0x4C00..0x5000;
+    let user_heap_0  = 0x4200..0x4800;
+    let user_vram_0  = 0x4800..0x5800;
+    let user_stack_0 = 0x5800..0x6000;
 
-    let user_code_1  = 0x5000..0x5800;
-    let user_data_1  = 0x5800..0x5A00;
-    let user_heap_1  = 0x5A00..0x6400;
-    let user_stack_1 = 0x6400..0x6800;
+    let user_code_1  = 0x6000..0x6800;
+    let user_data_1  = 0x6800..0x6A00;
+    let user_heap_1  = 0x6A00..0x7000;
+    let user_vram_1  = 0x7000..0x8000;
+    let user_stack_1 = 0x8000..0x8800;
 
-    let user_code_2  = 0x6800..0x7000;
-    let user_data_2  = 0x7000..0x7200;
-    let user_heap_2  = 0x7200..0x7C00;
-    let user_stack_2 = 0x7C00..0x8000;
+    let user_code_2  = 0x8800..0x9000;
+    let user_data_2  = 0x9000..0x9200;
+    let user_heap_2  = 0x9200..0x9800;
+    let user_vram_2  = 0x9800..0xA800;
+    let user_stack_2 = 0xA800..0xB000;
 
-    let user_code_3  = 0x8000..0x8800;
-    let user_data_3  = 0x8800..0x8A00;
-    let user_heap_3  = 0x8A00..0x9400;
-    let user_stack_3 = 0x9400..0x9800;
+    let user_code_3  = 0xB000..0xB800;
+    let user_data_3  = 0xB800..0xBA00;
+    let user_heap_3  = 0xBA00..0xC000;
+    let user_vram_3  = 0xC000..0xD000;
+    let user_stack_3 = 0xD000..0xD800;
 
-    let user_code_4  = 0x9800..0xA000;
-    let user_data_4  = 0xA000..0xA200;
-    let user_heap_4  = 0xA200..0xAC00;
-    let user_stack_4 = 0xAC00..0xB000;
-
-    let user_code_5  = 0xB000..0xB800;
-    let user_data_5  = 0xB800..0xBA00;
-    let user_heap_5  = 0xBA00..0xC400;
-    let user_stack_5 = 0xC400..0xC800;
-
-    let user_code_6  = 0xC800..0xD000;
-    let user_data_6  = 0xD000..0xD200;
-    let user_heap_6  = 0xD200..0xDC00;
-    let user_stack_6 = 0xDC00..0xE000;
-
-
-    let shared_data = 0xE000..0xF800;
+    let shared_data = 0xD800..0xF800;
 
     // let user_code_7  = 0xE000..0xE800;
     // let user_data_7  = 0xE800..0xEA00;
@@ -371,51 +359,55 @@ fn main() {
         keyb,
 
         bootloader,
-        kernel_core,
-        kernel_traps,
-        kernel_data,
-        kernel_heap,
-        kernel_stack,
-        vram,
-        mmio,
+        kernel_core.clone(),
+        kernel_traps.clone(),
+        kernel_data.clone(),
+        kernel_heap.clone(),
+        kernel_stack.clone(),
+        vram.clone(),
+        mmio.clone(),
 
         // later: make this way more concise. probably use a vec or array
-        user_code_0,
-        user_data_0,
-        user_heap_0,
-        user_stack_0,
+        user_code_0.clone(),
+        user_data_0.clone(),
+        user_heap_0.clone(),
+        user_vram_0.clone(),
+        user_stack_0.clone(),
 
-        user_code_1,
-        user_data_1,
-        user_heap_1,
-        user_stack_1,
+        user_code_1.clone(),
+        user_data_1.clone(),
+        user_heap_1.clone(),
+        user_vram_1.clone(),
+        user_stack_1.clone(),
 
-        user_code_2,
-        user_data_2,
-        user_heap_2,
-        user_stack_2,
+        user_code_2.clone(),
+        user_data_2.clone(),
+        user_heap_2.clone(),
+        user_vram_2.clone(),
+        user_stack_2.clone(),
 
-        user_code_3,
-        user_data_3,
-        user_heap_3,
-        user_stack_3,
+        user_code_3.clone(),
+        user_data_3.clone(),
+        user_heap_3.clone(),
+        user_vram_3.clone(),
+        user_stack_3.clone(),
 
-        user_code_4,
-        user_data_4,
-        user_heap_4,
-        user_stack_4,
+        // user_code_4.clone(),
+        // user_data_4.clone(),
+        // user_heap_4.clone(),
+        // user_stack_4.clone(),
 
-        user_code_5,
-        user_data_5,
-        user_heap_5,
-        user_stack_5,
+        // user_code_5.clone(),
+        // user_data_5.clone(),
+        // user_heap_5.clone(),
+        // user_stack_5.clone(),
 
-        user_code_6,
-        user_data_6,
-        user_heap_6,
-        user_stack_6,
+        // user_code_6.clone(),
+        // user_data_6.clone(),
+        // user_heap_6.clone(),
+        // user_stack_6.clone(),
 
-        shared_data,
+        shared_data.clone(),
 
         // user_code_7,
         // user_data_7,
@@ -426,21 +418,21 @@ fn main() {
 
 
     // load bootloader
-    load_assembly(&mut memory, "src\\boot".to_string());
+    load_assembly(&mut memory, "src\\boot".to_string(), None);
 
-    load_assembly(&mut memory, "src\\kernel".to_string());
+    load_assembly(&mut memory, "src\\kernel".to_string(), Some(kernel_core.start));
 
-    load_assembly(&mut memory, "src\\kernel_data".to_string());
+    load_assembly(&mut memory, "src\\kernel_data".to_string(), Some(kernel_data.start));
 
-    load_assembly(&mut memory, "src\\kerheap".to_string());
+    load_assembly(&mut memory, "src\\kerheap".to_string(), Some(kernel_heap.start));
 
-    load_assembly(&mut memory, "src\\program_handling".to_string());
+    load_assembly(&mut memory, "src\\program_handling".to_string(), Some(kernel_data.start));
 
-    load_assembly(&mut memory, "src\\mouse".to_string());
+    load_assembly(&mut memory, "src\\mouse".to_string(), Some(user_code_0.start));
 
-    load_assembly(&mut memory, "src\\shell_disp".to_string());
+    load_assembly(&mut memory, "src\\shell_disp".to_string(), Some(user_code_1.start));
 
-    load_assembly(&mut memory, "src\\shared".to_string());
+    load_assembly(&mut memory, "src\\shared".to_string(), Some(shared_data.start));
     
 
     let vm  = Vm::new(memory, vc, cpu);

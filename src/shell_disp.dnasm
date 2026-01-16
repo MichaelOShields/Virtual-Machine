@@ -1,4 +1,5 @@
-.abs 0x5000
+.start
+; .abs 0x5000
 
 
 ; shell setup:
@@ -11,8 +12,8 @@
 mov ri r1, 1
 mov ri r2, 20
 
-mov ri r6, hi(0x5800)
-mov ri r7, lo(0x5800) ; current pos in typing buffer
+mov ri r6, hi(rel(0x800))
+mov ri r7, lo(rel(0x800)) ; current pos in typing buffer
 
 loop_full_row:
     cmp ri r1, 129
@@ -79,7 +80,7 @@ check_key:
     ; otherwise, let's make sure we're in focus:
     push r r0
     mov ri r0, 0
-    cmp mr 0x59FF, r0 ; jz means we aren't focused
+    cmp mr rel(0x9FF), r0 ; jz means we aren't focused
     pop r r0
     jz i no_key
 
@@ -103,7 +104,7 @@ check_key:
 
 upper_bound_x:
     mov ri r1, 121
-    mov ri r7, lo(0x580F)
+    mov ri r7, lo(rel(0x80F))
     ; call i endcaret
 
     ; since at end of line:
@@ -113,7 +114,7 @@ upper_bound_x:
 
 lower_bound_x:
     mov ri r1, 1
-    mov ri r7, lo(0x5800)
+    mov ri r7, lo(rel(0x800))
     call i caret
 
     call i unset_at_end
@@ -214,7 +215,7 @@ backspace:
 
     push r r0
     mov ri r0, 0
-    cmp mr 0x5820, r0 ; see if we're at the end; if so, we can call the end sequence backspace:
+    cmp mr rel(0x820), r0 ; see if we're at the end; if so, we can call the end sequence backspace:
     pop r r0
     jnz i end_sequence
 
@@ -305,11 +306,11 @@ full_check_test:
 
 check_shutdown:
 
-    mov ri r4, hi(0x5800) ; text buffer
-    mov ri r5, lo(0x5800)
+    mov ri r4, hi(rel(0x800)) ; text buffer
+    mov ri r5, lo(rel(0x800))
 
-    mov ri r6, hi(0x5821) ; shutdown string
-    mov ri r7, lo(0x5821)
+    mov ri r6, hi(rel(0x821)) ; shutdown string
+    mov ri r7, lo(rel(0x821))
 
     jmp i ch_shutdown_loop
 
@@ -330,11 +331,11 @@ check_shutdown:
 
 check_panic:
 
-    mov ri r4, hi(0x5800) ; text buffer
-    mov ri r5, lo(0x5800)
+    mov ri r4, hi(rel(0x800)) ; text buffer
+    mov ri r5, lo(rel(0x800))
 
-    mov ri r6, hi(0x582B)
-    mov ri r7, lo(0x582B)
+    mov ri r6, hi(rel(0x82B))
+    mov ri r7, lo(rel(0x82B))
 
     jmp i ch_panic_loop
 
@@ -355,11 +356,11 @@ check_panic:
 
 check_test:
 
-    mov ri r4, hi(0x5800) ; text buffer
-    mov ri r5, lo(0x5800)
+    mov ri r4, hi(rel(0x800)) ; text buffer
+    mov ri r5, lo(rel(0x800))
 
-    mov ri r6, hi(0x5840)
-    mov ri r7, lo(0x5840)
+    mov ri r6, hi(rel(0x840))
+    mov ri r7, lo(rel(0x840))
 
     jmp i ch_test_loop
 
@@ -423,7 +424,7 @@ unfocus:
     call i draw_line
 
     mov ri r0, 0
-    mov mr 0x59FF, r0
+    mov mr rel(0x9FF), r0
 
     ret
 
@@ -431,12 +432,12 @@ focus:
     mov ri r0, 8 ; 33%
     call i draw_line
     mov ri r0, 1
-    mov mr 0x59FF, r0
+    mov mr rel(0x9FF), r0
     ret
 
 toggle_foc:
     mov ri r5, 1 ; "focused"
-    cmp mr 0x59FF, r5
+    cmp mr rel(0x9FF), r5
     jz i unfocus
     jnz i focus
     ret
@@ -456,8 +457,8 @@ render_output:
 
     mov ri r3, symbol_x ; placeholder error vals
     
-    mov ri r4, hi(0x5810)
-    mov ri r5, lo(0x5810)
+    mov ri r4, hi(rel(0x810))
+    mov ri r5, lo(rel(0x810))
 
     mov ri r6, 0x1F ; limit of low byte
 
@@ -498,15 +499,15 @@ set_output: ; r4 is ID/idx of msg/output
     push r r6
     push r r7
 
-    mov ri r3, hi(0x5900)
+    mov ri r3, hi(rel(0x900))
     mul ri r4, 16
 
     ; dbg r r4
 
     mov ri r7, 0
 
-    mov ri r5, hi(0x5810)
-    mov ri r6, lo(0x5810)
+    mov ri r5, hi(rel(0x810))
+    mov ri r6, lo(rel(0x810))
 
     set_output_loop:
 
@@ -536,7 +537,7 @@ set_at_end:
 
     mov ri r0, 1
     
-    mov mr 0x5820, r0
+    mov mr rel(0x820), r0
 
     pop r r0
     ret
@@ -546,7 +547,7 @@ unset_at_end:
 
     mov ri r0, 0
     
-    mov mr 0x5820, r0
+    mov mr rel(0x820), r0
 
     pop r r0
     ret
@@ -584,55 +585,55 @@ unset_at_end:
 .const "symbol_caret", 27
 .const "symbol_endcaret", 28
 
-.abs 0x5800 ; 0x5800-0x580F are reserved for the typing buffer (only 15 letters fit on the screen, so that's the max)
+.rel 0x800 ; 0x5800-0x580F are reserved for the typing buffer (only 15 letters fit on the screen, so that's the max)
 .byte 0
 
 
-.abs 0x5810 ; 0x5810-0x581F are reserved for the output buffer
+.rel 0x810 ; 0x5810-0x581F are reserved for the output buffer
 .byte 0
 
 
-.abs 0x5820 ; 0x5820 is reserved for the "at-end-of-line" boolean
+.rel 0x820 ; 0x5820 is reserved for the "at-end-of-line" boolean
 .byte 0
 
 
-; commands start at 0x5821
-.abs 0x5821 ; shutdown
+
+; commands start at 0x821 (was 0x5821)
+.rel 0x821 ; shutdown
 .str "shutdown"
-
 .byte 255
 
-.abs 0x582B ; panic
+.rel 0x82B ; panic (was 0x582B)
 .str "panic"
 .byte 255
 
-.abs 0x5833 ; spawn
+.rel 0x833 ; spawn (was 0x5833)
 .str "spawn"
 .byte 255
 
-.abs 0x583B ; kill
+.rel 0x83B ; kill (was 0x583B)
 .str "kill"
 .byte 255
 
-.abs 0x5840 ; test
+.rel 0x840 ; test (was 0x5840)
 .str "test"
 .byte 255
 
 
-.abs 0x5900 ; pre-written output strings. starts w/ check failed
+.rel 0x900 ; pre-written output strings. starts w/ check failed (was 0x5900)
 .str "default   output", 16
 
-.abs 0x5910 ; 1
+.rel 0x910 ; 1 (was 0x5910)
 .str "cmd not found", 16
 
-.abs 0x5920 ; 2
-.str "shutting down", 16
+.rel 0x920 ; 2 (was 0x5920)
+.str "halting shell", 16
 
-.abs 0x5930 ; 3
+.rel 0x930 ; 3 (was 0x5930)
 .str "panicking", 16
 
-.abs 0x5940 ; 4
+.rel 0x940 ; 4 (was 0x5940)
 .str "abcdefghijklmnop", 16
 
-.abs 0x59FF ; "focused" boolean
+.rel 0x9FF ; "focused" boolean (was 0x59FF)
 .byte 1

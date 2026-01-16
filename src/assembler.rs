@@ -404,6 +404,8 @@ pub enum BinaryOp {
 pub enum Function {
     Hi ( NumExpr ),  // high byte of mem addr
     Lo ( NumExpr ), // low byte of mem addr
+    Abs ( NumExpr ), // just the mem addr
+    Rel ( NumExpr ), // start pos to be added
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -482,6 +484,7 @@ pub enum Stmt {
 #[derive(Debug, PartialEq)]
 pub struct ParserError {
     message: String,
+    filename: String,
 }
 
 #[allow(dead_code)]
@@ -492,10 +495,11 @@ pub struct Parser {
     single_modes: HashMap<char, SingleMode>,
     double_modes: HashMap<String, DoubleMode>,
     ops: HashMap<String, (OpKind, OperandLength)>,
+    filename: String,
 }
 
 impl Parser {
-    pub fn new(mut passed_lex: Lexer) -> Self {
+    pub fn new(mut passed_lex: Lexer, filename: String) -> Self {
         let first = passed_lex.next_token().unwrap();
         let mut single_modes: HashMap<char, SingleMode> = HashMap::new();
         single_modes.insert('r', SingleMode::R);
@@ -584,13 +588,14 @@ impl Parser {
             single_modes,
             double_modes,
             ops,
+            filename,
         }
     }
 
     fn expect_ident(&mut self) -> Result<String, ParserError> {
         let val = match &self.current_token {
             Token::Ident(n) => n.clone(),
-            _ => return Err(ParserError { message: format!("Expected identifier but got token type {:?}", self.current_token) }),
+            _ => return Err(ParserError { message: format!("Expected identifier but got token type {:?}", self.current_token), filename: self.filename.clone() }),
         };
 
         self.advance()?;
@@ -616,35 +621,57 @@ impl Parser {
                 self.basic_token(Token::RPAREN)?;
                 Function::Lo(expr)
             },
-            _ => return Err(ParserError { message: "Couldn't understand function".to_string() }),
+            "abs" => {
+                let expr = self.expect_numexpr()?;
+                self.basic_token(Token::RPAREN)?;
+                Function::Abs(expr)
+            },
+            "rel" => {
+                let expr = self.expect_numexpr()?;
+                self.basic_token(Token::RPAREN)?;
+                Function::Rel(expr)
+            },
+            _ => return Err(ParserError { message: "Couldn't understand function".to_string(), filename: self.filename.clone() }),
         })
     }
 
     fn expect_numexpr(&mut self) -> Result<NumExpr, ParserError> {
-        return Ok(match &self.current_token {
+        let tok = self.current_token.clone();
+        let next_token: Token = self.peek_token()?;
+        return Ok(match tok {
             Token::Ident(name) => { // Try register, otherwise is immediate reference
+
+                if next_token == Token::LPAREN {
+                    self.advance()?;
+                    self.basic_token(Token::LPAREN)?;
+                    let expr = NumExpr::Function(Box::from(self.function_from_ident(&name)?));
+                    // self.advance()?;
+                    return Ok(expr)
+                }
+
+                
 
                 let expr = NumExpr::Reference(name.clone());
                 self.advance()?;
                 expr
             },
             Token::Int(val) => { // Immediate value
-                let expr = NumExpr::Raw(*val);
+                let expr = NumExpr::Raw(val);
                 self.advance()?;
                 expr
             },
             Token::Hex(h) => {
-                let expr = NumExpr::Raw(match i64::from_str_radix(h, 16) {
+                let expr = NumExpr::Raw(match i64::from_str_radix(&h, 16) {
                     Ok(i) => i,
-                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e), filename: self.filename.clone() }),
                 });
                 self.advance()?;
                 expr
             },
             Token::Binary(h) => {
-                let expr = NumExpr::Raw(match i64::from_str_radix(h, 2) {
+                let expr = NumExpr::Raw(match i64::from_str_radix(&h, 2) {
                     Ok(i) => i,
-                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e), filename: self.filename.clone() }),
                 });
                 self.advance()?;
                 expr
@@ -658,7 +685,7 @@ impl Parser {
                     Token::PLUS => BinaryOp::Add,
                     Token::MINUS => BinaryOp::Sub,
                     Token::FSLASH => BinaryOp::Div,
-                    _ => return Err(ParserError { message: format!("Expected operation exp but got {:?}", self.peek_token()?) }),
+                    _ => return Err(ParserError { message: format!("Expected operation exp but got {:?}", self.peek_token()?), filename: self.filename.clone() }),
                 };
                 self.basic_token(next_tok)?;
 
@@ -666,7 +693,7 @@ impl Parser {
                 self.basic_token(Token::RPAREN)?;
                 NumExpr::BinaryOperation { a: Box::from(a), operand: op, b: Box::from(b) }
             }
-            _ => return Err(ParserError { message: format!("Couldn't understand numexpr {:?}", self.current_token) }),
+            _ => return Err(ParserError { message: format!("Couldn't understand numexpr {:?}", self.current_token), filename: self.filename.clone() }),
         });
     }
 
@@ -705,7 +732,7 @@ impl Parser {
             Token::Hex(h) => {
                 let expr = Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
                     Ok(i) => i,
-                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e), filename: self.filename.clone() }),
                 }));
                 self.advance()?;
                 return Ok(Operand::Immediate(expr));
@@ -713,7 +740,7 @@ impl Parser {
             Token::Binary(h) => {
                 let expr = Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
                     Ok(i) => i,
-                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e), filename: self.filename.clone()}),
                 }));
                 self.advance()?;
                 return Ok(Operand::Immediate(expr));
@@ -731,7 +758,7 @@ impl Parser {
             })),
             _ => return Err(ParserError { message: format!("Expected NumExpr, got {:?}", self.current_token) }),
              */
-            _ => return Err(ParserError { message: format!("Couldn't understand operand expr {:?}", self.current_token) }),
+            _ => return Err(ParserError { message: format!("Couldn't understand operand expr {:?}", self.current_token), filename: self.filename.clone() }),
 
         };
     }
@@ -742,15 +769,15 @@ impl Parser {
         // println!("mode: {:?}", mode_ident);
         let mut mode = match self.double_modes.get(&mode_ident) {
             Some(m) => m,
-            None => return Err(ParserError { message: format!("Unable to get mode {:?}", mode_ident) }),
+            None => return Err(ParserError { message: format!("Unable to get mode {:?}", mode_ident), filename: self.filename.clone() }),
         }.clone();
 
         let dest = self.expect_operand()
-            .map_err(|_| ParserError { message: "Expected dest operand".into() })?;
+            .map_err(|_| ParserError { message: "Expected dest operand".into(), filename: self.filename.clone() })?;
 
         self.basic_token(Token::COMMA)?;
         let src = self.expect_operand()
-            .map_err(|_| ParserError { message: "Expected src operand".into() })?;
+            .map_err(|e| ParserError { message: format!("Expected src operand, also got PE {:?}", e), filename: self.filename.clone() })?;
 
         if let Operand::Register(_) = src {
             ()
@@ -776,10 +803,10 @@ impl Parser {
             "r" => &'r',
             "i" => &'i',
             "m" => &'m',
-            _ => return Err(ParserError { message: format!("Received unexpected mode {:?}", mode_ident) }),
+            _ => return Err(ParserError { message: format!("Received unexpected mode {:?}", mode_ident), filename: self.filename.clone() }),
         }) {
             Some(m) => m,
-            None => return Err(ParserError { message: "Unable to get mode".to_string() }),
+            None => return Err(ParserError { message: "Unable to get mode".to_string(), filename: self.filename.clone() }),
         }.clone();
         let operand = self.expect_operand()?;
 
@@ -801,7 +828,7 @@ impl Parser {
     fn basic_token(&mut self, expected: Token) -> Result<(), ParserError> {
         match &self.current_token {
             t if t == &expected => (),
-            _ => return Err(ParserError { message: format!("Expected token of type {:?} but got token <{:?}>", expected, self.current_token)}),
+            _ => return Err(ParserError { message: format!("Expected token of type {:?} but got token <{:?}>", expected, self.current_token), filename: self.filename.clone()}),
         };
 
         self.advance()?;
@@ -811,7 +838,7 @@ impl Parser {
     fn advance(&mut self) -> Result<(), ParserError> {
         let tok = self.parser_lexer.next_token()
             .map_err(|e| ParserError {
-                message: format!("LexerError {:?}", e),
+                message: format!("LexerError {:?}", e), filename: self.filename.clone()
             })?;
         self.current_token = tok;
         Ok(())
@@ -839,15 +866,15 @@ impl Parser {
                 Token::Int(i) => Expr::Num(NumExpr::Raw(*i)),
                 Token::Hex(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 16) {
                     Ok(i) => i,
-                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e) }),
+                    Err(e) => return Err(ParserError { message: format!("Got hex error {:?}", e), filename: self.filename.clone() }),
                 })),
                 Token::Binary(h) => Expr::Num(NumExpr::Raw(match i64::from_str_radix(h, 2) {
                     Ok(i) => i,
-                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e) }),
+                    Err(e) => return Err(ParserError { message: format!("Got binary error {:?}", e), filename: self.filename.clone() }),
                 })),
                 Token::Str(s) => Expr::Str(StrExpr::Raw(s.to_string())),
                 Token::Char(c) => Expr::Num(NumExpr::Raw(*c as i64)),
-                _ => return Err(ParserError { message: format!("Expected Expr, got {:?}", self.current_token) }),
+                _ => return Err(ParserError { message: format!("Expected Expr, got {:?}", self.current_token), filename: self.filename.clone() }),
             };
             self.advance()?;
             args.push(vectok);
@@ -864,7 +891,7 @@ impl Parser {
     fn peek_token(&mut self) -> Result<Token, ParserError> {
         return Ok(match self.parser_lexer.peek_next_token() {
             Ok(t) => t,
-            Err(e) => return Err(ParserError { message: format!("Got LexerError {:?}", e) }),
+            Err(e) => return Err(ParserError { message: format!("Got LexerError {:?}", e), filename: self.filename.clone() }),
         })
     }
 
@@ -872,7 +899,7 @@ impl Parser {
         self.basic_token(Token::PERIOD)?;
         let sigid = match &self.current_token {
             Token::Ident(s) => s.clone(),
-            _ => return Err(ParserError { message: format!("Expected signal identifier, got {:?}", self.current_token) })
+            _ => return Err(ParserError { message: format!("Expected signal identifier, got {:?}", self.current_token), filename: self.filename.clone() })
         };
         self.advance()?; // sig ident
         return Ok(self.parse_sig(sigid.to_string())?);
@@ -911,14 +938,14 @@ impl Parser {
                 return Ok(Stmt::Label(name));
             }
             else {
-                return Err(ParserError { message: format!("Couldn't identify ident {:?}",s   ) });
+                return Err(ParserError { message: format!("Couldn't identify ident {:?}",s   ), filename: self.filename.clone() });
             }
         }
         else if let Token::PERIOD = self.current_token {
             return Ok(self.parse_signal()?);
         }
         else {
-            return Err(ParserError { message: format!("Couldn't parse token {:?}", self.current_token) });
+            return Err(ParserError { message: format!("Couldn't parse token {:?}", self.current_token), filename: self.filename.clone() });
         }
     }
 
@@ -961,10 +988,12 @@ pub struct Assembler {
     symbols: HashMap<char, u8>,
     program: Vec<Stmt>,
     mode: AssembleMode,
+
+    start: u16, // given to assembler to know where the program starts so .rel (jumps to location in mem relative to start) will work
 }
 
 impl Assembler {
-    pub fn new(program: Vec<Stmt>) -> Self {
+    pub fn new(program: Vec<Stmt>, start: Option<u16>) -> Self {
         let symbols: HashMap<char, u8> = HashMap::from([
             (' ', 0),
             ('a', 1),
@@ -1004,6 +1033,10 @@ impl Assembler {
             symbols,
             program,
             mode: AssembleMode::CountBytes,
+            start: match start {
+                Some(s) => s,
+                None => 0,
+            },
         }
     }
 
@@ -1083,10 +1116,14 @@ impl Assembler {
     }
 
     fn get_addr_from_numexpr(&mut self, numexpr: NumExpr) -> Result<(u8, u8), AssemblerError> {
-        let mem_addr = match numexpr {
+        let mem_addr: u16 = match numexpr {
             NumExpr::Reference(r) => self.get_label(r.as_str())?,
             NumExpr::Raw(i) => i as u16,
-            NumExpr::Function(_) => return Err(AssemblerError { message: "Function received when getting address".to_string() }),
+            NumExpr::Function(f) => match *f {
+                Function::Abs(n) => self.eval_expr(Expr::Num ( n ))? as u16,
+                Function::Rel(n) => self.start + self.eval_expr(Expr::Num ( n ))? as u16,
+                _ => return Err(AssemblerError { message: "Function received when getting address".to_string() }),
+            },
             NumExpr::BinaryOperation { a, operand, b } => self.eval_num_bin_op(*a, operand, *b)? as u16,
 
         };
@@ -1185,6 +1222,7 @@ impl Assembler {
                             imm.push(immediate_val);
                         }
                         else if let Operand::Immediate(Expr::Num(NumExpr::Reference(r))) = src {
+
                             if self.labels.contains_key(&r) {
                                 return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
                             }
@@ -1193,6 +1231,7 @@ impl Assembler {
                                 let immediate_val: u8 = self.get_const(&r)?;
                                 imm.push(immediate_val);
                             }
+
                         }
                         else {
                             return Err(AssemblerError {message: "Expected 8-bit immediate operand.".to_string()})
@@ -1491,6 +1530,14 @@ impl Assembler {
                 let addr = self.eval_expr(Expr::Num(numexp))? as u16;
                 return Ok(get_bits_lsb(addr, 0, 7) as i64);
 
+            },
+            Function::Abs(numexp) => {
+                let addr = self.eval_expr(Expr::Num(numexp))? as u16;
+                return Ok(addr as i64);
+            },
+            Function::Rel(numexp) => {
+                let addr = self.start + self.eval_expr(Expr::Num(numexp))? as u16;
+                return Ok(addr as i64);
             }
         }
     }
@@ -1555,6 +1602,37 @@ impl Assembler {
                     },
                     _ => return Err(AssemblerError { message: "abs signal received incorrect arg".to_string() })
                 };
+                self.pc = new_pos;
+                self.current_pos = new_pos;
+            }
+        }
+        else if name == "rel" {
+            if args.len() != 1 {
+                return Err(AssemblerError { message: "rel signal arg count incorrect".to_string() });
+            }
+            else {
+                let new_pos = self.start + match &args[0] {
+                    Expr::Num(n) => match n {
+                        NumExpr::Reference(s) => {
+                            self.get_label(s)?
+                        },
+                        NumExpr::Raw(i) => *i as u16,
+                        NumExpr::Function(f) => self.eval_func(*f.clone())? as u16,
+                        NumExpr::BinaryOperation { a, operand, b } => self.eval_num_bin_op(*a.clone(), operand.clone(), *b.clone())? as u16,
+
+                    },
+                    _ => return Err(AssemblerError { message: "rel signal received incorrect arg".to_string() })
+                };
+                self.pc = new_pos;
+                self.current_pos = new_pos;
+            }
+        }
+        else if name == "start" {
+            if args.len() != 0 {
+                return Err(AssemblerError { message: "rel signal arg count incorrect".to_string() });
+            }
+            else {
+                let new_pos = self.start;
                 self.pc = new_pos;
                 self.current_pos = new_pos;
             }

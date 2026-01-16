@@ -1,4 +1,4 @@
-
+.start
 
 
 ; kernel info: @0x12C5
@@ -63,6 +63,5 @@
 
 
 .abs 0x17FF
-; 0x19FF is the location of the key buffer
 .byte 0
 

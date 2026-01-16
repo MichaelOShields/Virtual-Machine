@@ -1,4 +1,4 @@
-.abs 0x400
+.start
 
 
 
@@ -820,8 +820,8 @@ write_letter:
     ; r0:r1 contains the byte we're modifying
 
     ; now, r4-7 are free
-    mov ri r4, hi(0xE000)
-    mov ri r5, lo(0xE000)
+    mov ri r4, hi(0xD800)
+    mov ri r5, lo(0xD800)
     mul ri r3, 7
     add rr r5, r3 ; align font ptr, also frees up r3
 
@@ -850,8 +850,8 @@ write_letter_in_place:
     ; r0:r1 contains the byte we're modifying
 
     ; now, r4-7 are free
-    mov ri r4, hi(0xE000)
-    mov ri r5, lo(0xE000)
+    mov ri r4, hi(0xD800)
+    mov ri r5, lo(0xD800)
     mul ri r3, 7
     add rr r5, r3 ; align font ptr, also frees up r3
 
