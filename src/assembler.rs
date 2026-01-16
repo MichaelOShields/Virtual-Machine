@@ -540,6 +540,8 @@ impl Parser {
         ops.insert("gfls".to_string(), (OpKind::Single, OperandLength::Unsigned16));
         ops.insert("sfls".to_string(), (OpKind::Single, OperandLength::Unsigned16));
 
+        ops.insert("gcu".to_string(), (OpKind::Single, OperandLength::Unsigned16));
+
         ops.insert("call".to_string(), (OpKind::Single, OperandLength::Unsigned16));
 
         
@@ -1081,6 +1083,7 @@ impl Assembler {
             "sfls" => 0b100_100,
             "sdb" => 0b100_101,
             "andn" => 0b100_110,
+            "gcu" => 0b100_111,
             "hlt"  => 0b111_111,
             _ => return Err(AssemblerError { message: "Unable to parse opcode".to_string() }),
         });

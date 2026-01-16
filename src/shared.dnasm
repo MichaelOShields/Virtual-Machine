@@ -292,7 +292,85 @@ letters:
     ; .byte 0b00001_000
 ;
 
-.abs 0xE100
+.rel 0x100 ; past all the letters
+.abs 0xD900
+; convert from x,y to vram addr:
+convert_xy:
+    ; assumes x = r1, y = r2
+    ; pretty sure my math works out so no jump carries are needed, which should be more performant than just looping and spamming them
+    ; will set r1 to high byte, r2 to low byte, puts the x,y pixel byte in r3
+
+    ; move x and y to r4 and r5
+
+    mov rr r4, r1 ; x is in r4 now
+    mov rr r5, r2 ; y is in r5 now
+
+    ; now initialize high and low byte
+    mov ri r1, hi(0x4800) ; vram base pos
+    mov ri r2, lo(0x4800)
+
+    push r r3
+    gcu r r3
+    mul ri r3, 0x28
+    add rr r1, r3
+    pop r r3
+
+    ; 00 00 00 00
+    ; 00 00 00 00
+    ; 00 00 00 00
+    ; 00 00 00 00
+
+    ; y:
+    mov rr r6, r5
+    div ri r6, 8
+    add rr r1, r6
+
+    mov rr r6, r5
+    mod ri r6, 8
+    mul ri r6, 32
+    add rr r2, r6
 
 
-; functions (must add .rel and .abs in assembler first)
+
+    ; x:
+    mov rr r6, r4
+    div ri r6, 4
+
+    add rr r2, r6
+
+
+    ; now for the individual pixel:
+    mov rr r6, r4
+
+    mod ri r6, 4
+
+    jz i grab_last_byte_bit
+
+    mov ri r3, 0b0000_0001 ; x3 for full brightness, x2 for 66%, x1 for 33%
+
+    mul ri r6, 2
+
+
+    shrw rr r3, r6
+
+    grabbed_bit:
+
+
+    ret
+
+dec_r1:
+    sub ri r1, 1
+    ret
+
+dec_r2:
+    sub ri r2, 1
+    jc i dec_r1
+    ret
+
+
+grab_last_byte_bit: ; this is when we reach a new byte, but need to get the pixel that's just to the left of the leftmost bit
+    ; assumes r1:r2 are high and low
+    call i dec_r2
+    mov ri r3, 0b0000_0001
+    jmp i grabbed_bit
+

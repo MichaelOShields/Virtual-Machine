@@ -537,7 +537,7 @@ convert_xy:
 
     mov rr r4, r1 ; x is in r4 now
     mov rr r5, r2 ; y is in r5 now
-    
+
     ; now initialize high and low byte
     mov ri r1, hi(0x2400) ; vram base pos
     mov ri r2, lo(0x2400)

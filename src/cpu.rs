@@ -629,6 +629,73 @@ impl Cpu {
 
     }
 
+    fn enter_single_val(&mut self, mode: u16, reg: u16, mem: &mut Bus, val: u8) -> Result<(), CPUExit> {
+        match mode {
+            0b0000_u16 => {
+                // r
+                
+                let r = &mut self.regs[get_bits_lsb(reg, 3, 5) as usize];
+
+                
+                
+                *r = val;
+                self.increment_pc(2);
+            },
+            0b0001_u16 => {
+                // m(r)
+
+                // mem loc stored as r0:r1 or r1:r2 etc
+                let r11 = self.regs[get_bits_lsb(reg, 3, 5) as usize];
+                let r12 = self.regs[(get_bits_lsb(reg, 3, 5) + 1) as usize];
+
+                let m: u16 = (r11 as u16) << 8 | (r12 as u16);
+
+                self.increment_pc(2);
+
+                self.memset(m, val, mem)?;
+
+            },
+            0b0010_u16 => {
+                // i
+                let i1 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem)?;
+                self.increment_pc(1);
+
+                let i = (i1 as u16) << 8 | (i2 as u16);
+
+                // match self.mode {
+                //     CPUMode::K => self.ksp = i,
+                //     CPUMode::U => self.usp = i,
+                // }
+
+                self.increment_pc(2);
+                
+                self.memset(i, val, mem)?;
+            },
+            0b0011_u16 => {
+                // m(i)
+                let i1 = self.get_operand(mem)?;
+                self.increment_pc(1);
+                let i2 = self.get_operand(mem)?;
+                self.increment_pc(1);
+
+                let m: u16 = (i1 as u16) << 8 | (i2 as u16); // memory address
+
+                let mval1 = self.memget(m, mem)?;
+                let mval2 = self.memget(m + 1, mem)?;
+
+                self.increment_pc(2);
+
+                let final_mem = (mval1 as u16) << 8 | (mval2 as u16);
+
+                self.memset(final_mem, val, mem)?;
+            },
+            _ => println!("Unaccounted-for mode in single val entry"),
+        }
+        Ok(())
+    }
+
 
     fn op_pop(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
         match mode {
@@ -856,6 +923,18 @@ impl Cpu {
         Ok(())
     }
 
+    fn op_gcu(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
+
+
+        // in future, can condense to store all flags in 1 byte; currently too lazy lol
+
+        let curr_user = self.memget(0x12C5, mem)?;
+
+        self.enter_single_val(mode, reg, mem, curr_user)?;
+
+        Ok(())
+    }
+
     fn op_sfls(&mut self, mode: u16, reg: u16, mem: &mut Bus) -> Result<(), CPUExit> {
 
 
@@ -1075,6 +1154,7 @@ impl Cpu {
             0b100_100 => "sfls",
             0b100_101 => "sdb",
             0b100_110 => "andn",
+            0b100_111 => "gcu",
             0b111_111 => "hlt",
             _ => panic!("Received invalid instruction {:08b}", op),
         }.to_string()
@@ -1158,6 +1238,7 @@ impl Cpu {
             0b100_100_u16 => {self.op_sfls(mode, reg, mem)?; }, // set flags
             0b100_101_u16 => {self.op_sdb(mode, reg, mem)?; }, // SIMPLE DEBUG
             0b100_110_u16 => {self.op_andn(mode, reg, mem)?; }, // SIMPLE DEBUG
+            0b100_111_u16 => {self.op_gcu(mode, reg, mem)?; }, // SIMPLE DEBUG
             0b111111_u16 => {self.op_halt(mem)?;},
             _ => {
                 println!("Unaccounted-for operation.\nInstruction: {:016b}\nPC: {:x}", instruction, self.pc);
