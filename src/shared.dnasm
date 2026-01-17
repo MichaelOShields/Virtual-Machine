@@ -310,7 +310,12 @@ convert_xy:
     mov ri r2, lo(0x4800)
 
     push r r3
+
+    sdb r r3
+    sdb i 90
+    
     gcu r r3
+
     mul ri r3, 0x28
     add rr r1, r3
     pop r r3

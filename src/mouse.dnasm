@@ -69,13 +69,46 @@ all_keys:
 
 
 on_sys:
-    mov ri r0, 8
-    sys
+    push r r1
+    push r r2
+    push r r3
+
+    
+    call i convert_xy_call ; sets r3 to the correct val
+    
+    mul ri r3, 3 ; set to full brightness for negating
+    andn mr r1, r3 ; erase current pixel that's there (may remove in future)
+    div ri r3, 3
+    
+    mul ri r3, 3 ; set to full brightness to turn on the pixel
+    or mr r1, r3
+    
+    
+    
+    
+    pop r r3
+    pop r r2
+    pop r r1
     ret
 
 off_sys:
-    mov ri r0, 3
-    sys
+    push r r1
+    push r r2
+    push r r3
+
+    
+    call i convert_xy_call ; sets r3 to the correct val
+    
+    mul ri r3, 3 ; set to full brightness for negating
+    andn mr r1, r3 ; erase current pixel that's there
+    div ri r3, 3
+    
+    
+    
+    
+    pop r r3
+    pop r r2
+    pop r r1
     ret
 
 go_right:
@@ -134,3 +167,21 @@ lower_bound_x:
 upper_bound_x:
     mov ri r1, 128
     ret
+
+
+convert_xy_call:
+    push r r0
+    push r r4
+    push r r5
+    push r r6
+    push r r7
+    call i convert_xy
+    pop r r7
+    pop r r6
+    pop r r5
+    pop r r4
+    pop r r0
+    ret
+
+.abs 0xD900
+convert_xy:

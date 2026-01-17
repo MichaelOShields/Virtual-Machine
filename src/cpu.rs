@@ -928,7 +928,11 @@ impl Cpu {
 
         // in future, can condense to store all flags in 1 byte; currently too lazy lol
 
+        self.mode = CPUMode::K;
+
         let curr_user = self.memget(0x12C5, mem)?;
+
+        self.mode = CPUMode::U;
 
         self.enter_single_val(mode, reg, mem, curr_user)?;
 

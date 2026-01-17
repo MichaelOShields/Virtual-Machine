@@ -343,7 +343,7 @@ fn main() {
     let user_vram_3  = 0xC000..0xD000; // user vram 2 (0x9800) + 0x2800 = user vram 3
     let user_stack_3 = 0xD000..0xD800;
 
-    // formula for getting x,y for per-prog vram: 0x4800 + (user idx * 0x2800)
+    // formula for getting x,y for per-prog vram: 0x4800 + (user idx * 0x2800)  
 
     let shared_data = 0xD800..0xF800;
 

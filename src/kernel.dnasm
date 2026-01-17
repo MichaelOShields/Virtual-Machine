@@ -15,10 +15,61 @@ kernel:
 
     ; to run userprog, store kernel regs, store kernel stack ptr, set/pop user program stack ptr, run user program
 
-    ; call i save_kregs ; do we even need this?
+    ; first, blit onto the screen:
+
+    ; align r4:r5 w/ user prog vram
+
+    mov rm r4, 0x12C8
+
+    mul ri r4, 0x28
+    add ri r4, 0x48
+
+    mov ri r5, 0x00
+
+    mov ri r0, hi(0x2400)
+    mov ri r1, lo(0x2400)
 
 
+    blit_loop:
+        cmp ri r4, 0x58 ; user 0 stack
+        jz i after_blit
 
+        cmp ri r4, 0x80 ; user 1 stack
+        jz i after_blit
+
+        cmp ri r4, 0xA8
+        jz i after_blit
+
+        cmp ri r4, 0xD0
+        jz i after_blit
+
+        ; now we know we're still blitting:
+        mov rm r2, r4
+        or mr r0, r2
+
+
+        call i inc_r1_byte ; next byte
+        call i inc_r5 ; next byte
+
+        ; sdb r r4
+
+        
+        jmp i blit_loop
+    
+
+
+    after_blit:
+
+    mov ri r0, 0
+    mov ri r1, 0
+    mov ri r2, 0
+    mov ri r3, 0
+    mov ri r4, 0
+    mov ri r5, 0
+    mov ri r6, 0
+    mov ri r7, 0
+    sdb i 7
+    
     ; pick next program:
     ; start w/ current task index:
 
@@ -37,7 +88,7 @@ kernel:
 
     scheduler_loop:                     ; loop until we find a program that wants to run
 
-    
+
 
         ; pnk
 
@@ -45,7 +96,7 @@ kernel:
         add rr r5, r3
         add ri r0, 1 ; keep current_task register up-to-date w/ indexed task state byte
 
-        cmp ri r0, 7
+        cmp ri r0, 3
         jz i reset_r0
 
         after_reset:
@@ -945,7 +996,6 @@ pixel_off:
 
 
 
-
 ; KERNEL TRAP:
 
 .abs 0x1000 ; kernel trap
@@ -1067,6 +1117,7 @@ ktrap_catch:
 
 
 resume_prog_sys:
+
     ; let's move r0, r1, and r2 onto the heap so we can restore them later:
     mov mr 0x1800, r0
     ; mov mr 0x1801, r1
@@ -1187,6 +1238,8 @@ get_key:
 
 
 apoptosis:
+
+    sdb i 69
 
     mov ri r1, hi(0x130E)
     mov ri r2, lo(0x130E)
