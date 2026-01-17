@@ -930,7 +930,7 @@ impl Cpu {
 
         self.mode = CPUMode::K;
 
-        let curr_user = self.memget(0x12C5, mem)?;
+        let curr_user = self.memget(0x12C8, mem)?;
 
         self.mode = CPUMode::U;
 
