@@ -59,7 +59,7 @@ kernel:
 
         jz i found_program
 
-        cmp ri r7, 2
+        cmp ri r7, 2 ; waiting for input
         jz i check_waiting
 
         check_rejection: ; if the waiting condition isn't satisfied yet
