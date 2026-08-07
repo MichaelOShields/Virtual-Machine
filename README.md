@@ -5,3 +5,4 @@ Although I've always known that all of the code I write is "compiled into human-
 It features a simulated CPU with a custom ISA, 64-KB memory, program protection levels, etc.
 I also wrote a two-pass assembler for the ISA which greatly simplified program writing.
 It also includes a kernel with a round-robin scheduler, context switching, syscall handler, CPU exit trap handler, and more.
+Currently working commands are: "shutdown" (kills the shell process), "panic" (closes the entire VM), and "test" (just prints ~1/2 of the alphabet)
